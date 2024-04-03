@@ -1,0 +1,29 @@
+/**
+ * @see https://www.electron.build/configuration/configuration
+ */
+{
+  appId: "mushroomlauncher",
+  productName: "MushroomLauncher",
+  copyright: "Copyright © 2024 ${author} (MIT License)",
+  asar: true,
+  directories: {
+    output: "release/${version}",
+    buildResources: "electron/resources",
+  },
+  files: ["dist"],
+  win: {
+    target: [
+      {
+        target: "nsis",
+        arch: ["x64"],
+      },
+    ],
+    artifactName: "${productName}-Windows-${version}-Setup.${ext}",
+  },
+  nsis: {
+    oneClick: false,
+    perMachine: false,
+    allowToChangeInstallationDirectory: true,
+    deleteAppDataOnUninstall: false,
+  },
+}
