@@ -33,9 +33,11 @@ async function createWindow() {
     title: 'Mushroom Launcher',
     icon: join(ROOT_PATH.public, 'favicon.ico'),
     autoHideMenuBar: true,
-    resizable: false,
+    resizable: true,
     width: 900,
     height: 600,
+    minWidth: 500,
+    minHeight: 500,
     webPreferences: {
       preload,
       nodeIntegration: true,
