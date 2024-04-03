@@ -30,8 +30,12 @@ const indexHtml = join(ROOT_PATH.dist, 'index.html')
 
 async function createWindow() {
   win = new BrowserWindow({
-    title: 'Main window',
-    icon: join(ROOT_PATH.public, 'favicon.svg'),
+    title: 'Mushroom Launcher',
+    icon: join(ROOT_PATH.public, 'favicon.ico'),
+    autoHideMenuBar: true,
+    resizable: false,
+    width: 900,
+    height: 600,
     webPreferences: {
       preload,
       nodeIntegration: true,
