@@ -1,3 +1,13 @@
+import { ipcRenderer } from "electron"
+import { join } from 'path'
+
+export const ROOT_PATH = {
+  // /dist
+  dist: join(__dirname, '../..'),
+  // /dist or /public
+  public: join(__dirname, '../../../public'),
+}
+
 function domReady(condition: DocumentReadyState[] = ['complete', 'interactive']) {
   return new Promise(resolve => {
     if (condition.includes(document.readyState)) {
@@ -24,7 +34,6 @@ const safeDOM = {
     }
   },
 }
-
 /**
  * https://tobiasahlin.com/spinkit
  * https://connoratherton.com/loaders
@@ -32,6 +41,8 @@ const safeDOM = {
  * https://matejkustec.github.io/SpinThatShit
  */
 function useLoading() {
+  const iconPath = join(ROOT_PATH.public, '\\favicon.ico').replace(/\\/g, '\\\\');
+
   const className = `loaders-css__square-spin`
   const styleContent = `
 @keyframes square-spin {
@@ -44,7 +55,7 @@ function useLoading() {
   animation-fill-mode: both;
   width: 250px;
   height: 250px;
-  background: url('/src/assets/favicon.ico') no-repeat center center fixed;
+  background: url("${iconPath}") no-repeat center center fixed;
   background-size: 33%;
   animation: square-spin 3s 0s cubic-bezier(0.09, 0.57, 0.49, 0.9) infinite;
 }
