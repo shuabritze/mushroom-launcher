@@ -84,6 +84,9 @@ const App: Component = () => {
   onMount(() => {
     setClientUrl(getClientLocation());
     setServerList(getServerList());
+    if (serverList().length > 0) {
+      setSelectedServer(serverList()[0]);
+    }
   });
 
   return (

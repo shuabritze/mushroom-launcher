@@ -9,7 +9,7 @@ const dialog = electron.dialog;
 
 
 let APP_CONFIG = {
-  clientLocation: '',
+  clientLocation: '', 
   serverList: [],
 };
 
@@ -39,11 +39,11 @@ const preload = join(__dirname, '../preload/index.js')
 const url = process.env.VITE_DEV_SERVER_URL
 const indexHtml = join(ROOT_PATH.dist, 'index.html')
 
-const maple2 = join(__dirname, '../../../electron/resources/Maple2.dll');
-const maple2ini = join(__dirname, '../../../electron/resources/Maple2.ini');
-const downloader = join(__dirname, '../../../electron/resources/downloader/DepotDownloaderMod.dll');
-const depotKey = join(__dirname, '../../../electron/resources/downloader/depot.key');
-const manifest = join(__dirname, '../../../electron/resources/downloader/560381_3190888022545443868.manifest');
+const maple2 = join(__dirname, app.isPackaged ? '../../../../../Maple2.dll' : '../../../electron/resources/Maple2.dll');
+const maple2edit = join(__dirname, app.isPackaged ? '../../../../../maple2edit/Maple2Edit.dll' : '../../../electron/resources/maple2edit/Maple2Edit.dll');
+const downloader = join(__dirname, app.isPackaged ? '../../../../../downloader/DepotDownloaderMod.dll' : '../../../electron/resources/downloader/DepotDownloaderMod.dll');
+const depotKey = join(__dirname, app.isPackaged ? '../../../../../downloader/depot.key' : '../../../electron/resources/downloader/depot.key');
+const manifest = join(__dirname, app.isPackaged ? '../../../../../downloader/560381_3190888022545443868.manifest' : '../../../electron/resources/downloader/560381_3190888022545443868.manifest');
 
 async function createWindow() {
   win = new BrowserWindow({
@@ -106,11 +106,19 @@ hook_inpacket=false`);
         encoding: 'utf8',
         detached: true,
       });
+
+      // Minimize the client window
+      win.minimize();
     }
 
     if (url.startsWith('download:')) {
       const clientUrl = url.replace('download:', '');
       if (!clientUrl) return { action: 'deny' };
+
+      // Check if the client already exists at the given location
+      const exe = join(clientUrl, 'x64', 'MapleStory2.exe');
+      if (fs.existsSync(exe)) return { action: 'deny' };
+
       run_script('dotnet', [`${downloader}`, `-app 560380`, `-depot 560381`, `-depotkeys ${depotKey}`, `-manifest 3190888022545443868`, `-manifestfile ${manifest}`, `-dir ${clientUrl}`], () => { });
     }
 
@@ -122,7 +130,8 @@ hook_inpacket=false`);
       // Copy Maple2.dll to client/x64/Maple2.dll
       fs.copyFileSync(maple2, join(clientUrl, 'x64', 'Maple2.dll'));
 
-      // Update NxCharacter64.dll to include Maple2.dll in the imports... (todo)
+      // Update NxCharacter64.dll to include Maple2.dll in the imports
+      run_script('dotnet', [`${maple2edit}`, `${clientUrl}`], () => { });
     }
 
     return { action: 'deny' }
@@ -246,9 +255,9 @@ function run_script(command, args, callback) {
     switch (code) {
       case 0:
         dialog.showMessageBox({
-          title: 'Title',
+          title: 'Mushroom Launcher',
           type: 'info',
-          message: 'End process.\r\n'
+          message: 'Patching complete.\r\n'
         });
         break;
     }

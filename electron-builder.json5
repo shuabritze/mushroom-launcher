@@ -11,6 +11,23 @@
     buildResources: "electron/resources",
   },
   files: ["dist"],
+  "extraFiles": [
+    {
+      "from": "electron/resources",
+      "to": ".",
+      "filter": ["*.dll"]
+    },
+    {
+      "from": "electron/resources/downloader",
+      "to": "./downloader",
+      "filter": ["*"]
+    },
+    {
+      "from": "electron/resources/maple2edit",
+      "to": "./maple2edit",
+      "filter": ["*"]
+    },
+  ],
   win: {
     target: [
       {

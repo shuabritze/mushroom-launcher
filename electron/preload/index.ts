@@ -41,7 +41,7 @@ const safeDOM = {
  * https://matejkustec.github.io/SpinThatShit
  */
 function useLoading() {
-  const iconPath = join(ROOT_PATH.public, '\\favicon.ico').replace(/\\/g, '\\\\');
+  const iconPath = join(ROOT_PATH.dist, '\\favicon.ico').replace(/\\/g, '\\\\');
 
   const className = `loaders-css__square-spin`
   const styleContent = `
