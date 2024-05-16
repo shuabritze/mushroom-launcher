@@ -99,7 +99,7 @@ const App: Component = () => {
         "background-size": "cover"
       }}>
         <div class="w-full h-full flex flex-col pb-[6rem] text-white">
-          <h1 class="w-full text-[1rem] font-bold p-4 drop-shadow-md bg-black/50 flex justify-between">Mushroom Launcher <span>{`v1.0.0`}</span></h1>
+          <h1 class="w-full text-[1rem] font-bold p-4 drop-shadow-md bg-black/50 flex justify-between">Mushroom Launcher <span>{`v1.0.1`}</span></h1>
           <div class="w-1/2 h-full p-4 overflow-hidden">
             <div class="bg-black/50 w-full h-full rounded-md flex flex-col overflow-hidden">
               <div class="text-center bg-black/50 cursor-pointer text-sm h-[3rem] flex items-center justify-center" onClick={() => setShowAddServerModal(true)}>Add Server +</div>

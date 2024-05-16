@@ -194,6 +194,9 @@ ipcMain.on('select-client-dir', (event, arg) => {
   if (result && result.length > 0) {
     event.returnValue = result[0];
     APP_CONFIG.clientLocation = result[0];
+
+    fs.writeFileSync(join(dirname(process.execPath), 'app-config.json'), JSON.stringify(APP_CONFIG));
+    console.log('APP_CONFIG saved to disk', join(dirname(process.execPath), 'app-config.json'));
   }
   event.returnValue = undefined;
 });
@@ -209,11 +212,19 @@ ipcMain.on('get-server-list', (event, arg) => {
 ipcMain.on('add-server-to-list', (event, ...args) => {
   console.log(args);
   APP_CONFIG.serverList.push({ id: Math.random().toString(36).substring(2), ip: args[0], port: args[1], name: args[2] });
+
+  fs.writeFileSync(join(dirname(process.execPath), 'app-config.json'), JSON.stringify(APP_CONFIG));
+  console.log('APP_CONFIG saved to disk', join(dirname(process.execPath), 'app-config.json'));
+
   event.returnValue = undefined;
 });
 
 ipcMain.on('remove-server-from-list', (event, arg) => {
   APP_CONFIG.serverList = APP_CONFIG.serverList.filter(server => server.id !== arg);
+
+  fs.writeFileSync(join(dirname(process.execPath), 'app-config.json'), JSON.stringify(APP_CONFIG));
+  console.log('APP_CONFIG saved to disk', join(dirname(process.execPath), 'app-config.json'));
+
   event.returnValue = undefined;
 });
 
