@@ -2,7 +2,7 @@
   "name": "mushroom-launcher",
   "productName": "Mushroom Launcher",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Game Launcher written in Electron, Solid, and Tailwind",
   "author": "shuabritze",
   "license": "MIT",

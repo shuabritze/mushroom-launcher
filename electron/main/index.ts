@@ -98,7 +98,8 @@ multiclient=true
 visualizer=false
 log_exceptions=false
 hook_outpacket=false
-hook_inpacket=false`);
+hook_inpacket=false
+patch_input_text=true`);
 
       if (!clientUrl) return { action: 'deny' };
 
