@@ -120,7 +120,7 @@ patch_input_text=true`);
       const exe = join(clientUrl, 'x64', 'MapleStory2.exe');
       if (fs.existsSync(exe)) return { action: 'deny' };
 
-      run_script('dotnet', [`${downloader}`, `-app 560380`, `-depot 560381`, `-depotkeys ${depotKey}`, `-manifest 3190888022545443868`, `-manifestfile ${manifest}`, `-dir ${clientUrl}`], () => { });
+      run_script('dotnet', [`${downloader}`, `-app 560380`, `-depot 560381`, `-depotkeys ${depotKey}`, `-manifest 3190888022545443868`, `-manifestfile ${manifest}`, `-dir "${clientUrl}"`], () => { });
     }
 
     if (url.startsWith('patch:')) {
@@ -132,7 +132,7 @@ patch_input_text=true`);
       fs.copyFileSync(maple2, join(clientUrl, 'x64', 'Maple2.dll'));
 
       // Update NxCharacter64.dll to include Maple2.dll in the imports
-      run_script('dotnet', [`${maple2edit}`, `${clientUrl}`], () => { });
+      run_script('dotnet', [`${maple2edit}`, `"${clientUrl}"`], () => { });
     }
 
     return { action: 'deny' }
