@@ -81,12 +81,20 @@ const App: Component = () => {
     setServerList(getServerList());
   };
 
+  const launchServer = (server: ServerEntry) => {
+    window.open(`maple:${server.ip}:${server.port}`);
+  };
+
   onMount(() => {
     setClientUrl(getClientLocation());
     setServerList(getServerList());
     if (serverList().length > 0) {
       setSelectedServer(serverList()[0]);
     }
+
+    setInterval(() => {
+      setServerList(getServerList());
+    }, 30000);
   });
 
   return (
@@ -99,13 +107,13 @@ const App: Component = () => {
         "background-size": "cover"
       }}>
         <div class="w-full h-full flex flex-col pb-[6rem] text-white">
-          <h1 class="w-full text-[1rem] font-bold p-4 drop-shadow-md bg-black/50 flex justify-between">Mushroom Launcher <span>{`v1.0.3`}</span></h1>
+          <h1 class="w-full text-[1rem] font-bold p-4 drop-shadow-md bg-black/50 flex justify-between">Mushroom Launcher <span>{`v1.0.4`}</span></h1>
           <div class="w-1/2 h-full p-4 overflow-hidden">
             <div class="bg-black/50 w-full h-full rounded-md flex flex-col overflow-hidden">
               <div class="text-center bg-black/50 cursor-pointer text-sm h-[3rem] flex items-center justify-center" onClick={() => setShowAddServerModal(true)}>Add Server +</div>
               <div class="overflow-y-auto no-scrollbar">
                 <For each={serverList()}>
-                  {(server) => <ServerListItem server={server} selected={selectedServer() === server} onSelect={(server) => setSelectedServer(server)} onDelete={(server) => removeServer(server.id)} />}
+                  {(server) => <ServerListItem server={server} selected={selectedServer()?.id === server.id} onSelect={(server) => setSelectedServer(server)} onDelete={(server) => removeServer(server.id)} onLaunch={(server) => launchServer(server)} />}
                 </For>
               </div>
             </div>
@@ -137,8 +145,8 @@ const App: Component = () => {
 };
 
 // A list item with online status, server name, server ip:port and a delete button X
-const ServerListItem = (props: { server: ServerEntry, selected: boolean, onSelect: (server: ServerEntry) => void, onDelete: (server: ServerEntry) => void }) => {
-  return <div class={`flex justify-around gap-2 cursor-pointer hover:bg-black/50 transition-colors duration-300 ${props.selected ? ' bg-black/75' : ''}`} onClick={() => { props.onSelect(props.server) }}>
+const ServerListItem = (props: { server: ServerEntry, selected: boolean, onSelect: (server: ServerEntry) => void, onDelete: (server: ServerEntry) => void, onLaunch: (server: ServerEntry) => void }) => {
+  return <div class={`flex justify-around gap-2 cursor-pointer hover:bg-black/50 transition-colors duration-300 ${props.selected ? ' bg-black/75' : ''}`} onClick={() => { props.onSelect(props.server) }} onDblClick={() => { props.onLaunch(props.server) }}>
     <div class="w-6/12 text-sm pl-2 overflow-hidden text-ellipsis text-nowrap">{props.server.name}</div>
     <div class="w-6/12 text-xs flex items-center text-nowrap overflow-hidden text-ellipsis">{props.server.ip}:{props.server.port}</div>
     <div class="w-1/12 flex items-center"><span class={`w-4 h-4 flex rounded-full ${props.server.online ? 'bg-green-500' : 'bg-red-500'}`}></span></div>

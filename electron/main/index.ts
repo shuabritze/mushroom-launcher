@@ -9,7 +9,7 @@ const dialog = electron.dialog;
 
 
 let APP_CONFIG = {
-  clientLocation: '', 
+  clientLocation: '',
   serverList: [],
 };
 
@@ -118,7 +118,14 @@ patch_input_text=true`);
 
       // Check if the client already exists at the given location
       const exe = join(clientUrl, 'x64', 'MapleStory2.exe');
-      if (fs.existsSync(exe)) return { action: 'deny' };
+      if (fs.existsSync(exe)) {
+        dialog.showMessageBox({
+          title: 'Mushroom Launcher',
+          type: 'warning',
+          message: 'Download failed. (A client already exists at the given location, please remove it before attempting to download again)\r\n'
+        });
+        return { action: 'deny' };
+      }
 
       run_script('dotnet', [`${downloader}`, `-app 560380`, `-depot 560381`, `-depotkeys ${depotKey}`, `-manifest 3190888022545443868`, `-manifestfile ${manifest}`, `-dir "${clientUrl}"`], () => { });
     }
@@ -128,21 +135,48 @@ patch_input_text=true`);
       console.log(clientUrl);
       console.log(maple2);
 
+      const exe = join(clientUrl, 'x64', 'MapleStory2.exe');
+      if (!fs.existsSync(exe)) {
+        dialog.showMessageBox({
+          title: 'Mushroom Launcher',
+          type: 'warning',
+          message: 'Patching failed. (Could not find MapleStory2.exe)\r\n'
+        });
+        return { action: 'deny' };
+      }
+
       // Copy Maple2.dll to client/x64/Maple2.dll
       fs.copyFileSync(maple2, join(clientUrl, 'x64', 'Maple2.dll'));
 
       // Update NxCharacter64.dll to include Maple2.dll in the imports
-      run_script('dotnet', [`${maple2edit}`, `"${clientUrl}"`], () => { });
+      run_script('dotnet', [`${maple2edit}`, `"${clientUrl}"`], () => { }, 'patch');
     }
 
     return { action: 'deny' }
   })
 
   // Load APP_CONFIG
-  fs.readFile(join(dirname(process.execPath), 'app-config.json'), (err, data) => {
-    if (err) return;
-    APP_CONFIG = JSON.parse(data.toString());
-  });
+  if (fs.existsSync(join(dirname(process.execPath), 'app-config.json'))) {
+    fs.readFile(join(dirname(process.execPath), 'app-config.json'), (err, data) => {
+      if (err) {
+        dialog.showMessageBox({
+          title: 'Mushroom Launcher',
+          type: 'warning',
+          message: 'Could not load APP_CONFIG, your config may be corrupted.\r\n'
+        });
+        return;
+      };
+      APP_CONFIG = JSON.parse(data.toString());
+
+      for (const server of APP_CONFIG.serverList) {
+        checkPort(server.ip, server.port).then((available) => {
+          console.log(`Server ${server.name} is ${available ? 'online' : 'offline'}`);
+          server.online = available;
+        });
+      }
+    });
+  }
+
 }
 
 app.whenReady().then(createWindow)
@@ -206,7 +240,11 @@ ipcMain.on('get-client-location', (event, arg) => {
   event.returnValue = APP_CONFIG.clientLocation;
 });
 
-ipcMain.on('get-server-list', (event, arg) => {
+ipcMain.on('get-server-list', async (event, arg) => {
+  for (const server of APP_CONFIG.serverList) {
+    const available = await checkPort(server.ip, server.port);
+    server.online = available;
+  }
   event.returnValue = APP_CONFIG.serverList;
 });
 
@@ -232,7 +270,7 @@ ipcMain.on('remove-server-from-list', (event, arg) => {
 // This function will output the lines from the script 
 // and will return the full combined output
 // as well as exit code when it's done (using the callback).
-function run_script(command, args, callback) {
+function run_script(command, args, callback, type = 'download') {
   var child = child_process.spawn(command, args, {
     encoding: 'utf8',
     detached: true,
@@ -262,19 +300,61 @@ function run_script(command, args, callback) {
     console.log(data);
   });
 
-  child.on('close', (code) => {
-    //Here you can get the exit code of the script  
-    switch (code) {
-      case 0:
-        dialog.showMessageBox({
-          title: 'Mushroom Launcher',
-          type: 'info',
-          message: 'Patching complete.\r\n'
-        });
-        break;
-    }
+  if (type === 'patch') {
+    child.on('close', (code) => {
+      //Here you can get the exit code of the script  
+      switch (code) {
+        case 0:
+          const patched = fs.existsSync(join(APP_CONFIG.clientLocation, 'x64', 'NxCharacter64.dll.bak'));
 
-  });
+          if (patched) {
+            dialog.showMessageBox({
+              title: 'Mushroom Launcher',
+              type: 'info',
+              message: 'Patching complete.\r\n'
+            });
+            break;
+          }
+        default:
+          dialog.showMessageBox({
+            title: 'Mushroom Launcher',
+            type: 'warning',
+            message: 'Patching failed. (Could not find NxCharacter64.dll.bak)\r\n'
+          });
+          break;
+      }
+    });
+  }
+
   if (typeof callback === 'function')
     callback();
+}
+
+const net = require('net');
+
+function checkPort(ip, port, timeout = 2000) {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+
+    // Set a timeout for the connection attempt
+    socket.setTimeout(timeout); // 2 seconds timeout
+
+    socket.on('connect', () => {
+      socket.destroy(); // Close the connection
+      resolve(true);
+    });
+
+    socket.on('timeout', () => {
+      socket.destroy();
+      resolve(false);
+    });
+
+    socket.on('error', (err) => {
+      if (err.code === 'ECONNREFUSED') {
+        resolve(false);
+      }
+    });
+
+    socket.connect(port, ip);
+  });
 }
