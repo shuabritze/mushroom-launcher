@@ -51,11 +51,24 @@
     "license": "MIT",
     "dependencies": {
         "@electron-forge/publisher-github": "^7.5.0",
+        "@emotion/react": "^11.13.3",
+        "@radix-ui/react-dialog": "^1.1.1",
+        "@radix-ui/react-label": "^2.1.0",
+        "@radix-ui/react-progress": "^1.1.0",
+        "@radix-ui/react-slot": "^1.1.0",
+        "@radix-ui/react-toast": "^1.2.1",
         "@types/react-dom": "^18.3.0",
+        "class-variance-authority": "^0.7.0",
+        "clsx": "^2.1.1",
         "dotenv": "^16.4.5",
         "electron-squirrel-startup": "^1.0.1",
+        "lucide-react": "^0.445.0",
         "react": "^18.3.1",
+        "react-awesome-reveal": "^4.2.14",
         "react-dom": "^18.3.1",
+        "resedit": "^2.0.2",
+        "tailwind-merge": "^2.5.2",
+        "tailwindcss-animate": "^1.0.7",
         "update-electron-app": "^3.0.0"
     }
 }

@@ -1,5 +1,6 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, dialog, HandlerDetails, shell } from "electron";
 import path from "path";
+import fs from "fs";
 import "dotenv/config";
 
 // #region Squirrel Installer
@@ -15,6 +16,8 @@ import { updateElectronApp } from "update-electron-app";
 updateElectronApp();
 // #endregion
 
+import { checkPort } from "./lib";
+
 // #region Main Window
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -22,8 +25,11 @@ declare const MAIN_WINDOW_VITE_NAME: string;
 const createWindow = () => {
     // Create the browser window.
     const mainWindow = new BrowserWindow({
-        width: 800,
-        height: 600,
+        resizable: true,
+        width: 1024,
+        height: 640,
+        minWidth: 1024,
+        minHeight: 640,
         autoHideMenuBar: true,
         webPreferences: {
             preload: path.join(__dirname, "preload.js"),
@@ -45,8 +51,46 @@ const createWindow = () => {
         );
     }
 
-    // Open the DevTools.
-    mainWindow.webContents.openDevTools();
+    if (process.env.NODE_ENV === "development") {
+        mainWindow.webContents.openDevTools();
+    }
+
+    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+        if (url.startsWith("https:")) shell.openExternal(url);
+        return { action: "deny" };
+    });
+
+    // Load APP_CONFIG
+    if (
+        fs.existsSync(
+            path.join(path.dirname(process.execPath), "app-config.json"),
+        )
+    ) {
+        fs.readFile(
+            path.join(path.dirname(process.execPath), "app-config.json"),
+            (err, data) => {
+                if (err) {
+                    dialog.showMessageBox({
+                        title: "Mushroom Launcher",
+                        type: "warning",
+                        message:
+                            "Could not load APP_CONFIG, your config may be corrupted.\r\n",
+                    });
+                    return;
+                }
+                APP_STATE = JSON.parse(data.toString());
+
+                for (const server of APP_STATE.servers) {
+                    checkPort(server.ip, server.port).then((available) => {
+                        console.log(
+                            `Server ${server.name} is ${available ? "online" : "offline"}`,
+                        );
+                        server.online = available;
+                    });
+                }
+            },
+        );
+    }
 };
 
 app.on("ready", createWindow);
@@ -55,6 +99,8 @@ app.on("window-all-closed", () => {
     if (process.platform !== "darwin") {
         app.quit();
     }
+    // Save APP_CONFIG to disk
+    SaveConfig();
 });
 
 app.on("activate", () => {
@@ -64,5 +110,28 @@ app.on("activate", () => {
 });
 // #endregion
 
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and import them here.
+// #region State
+import type { ServerEntry } from "./web/src/ServerList";
+
+export let APP_STATE = {
+    servers: [],
+    clientPath: "",
+} as {
+    clientPath: string;
+    servers: ServerEntry[];
+};
+
+export function SaveConfig() {
+    fs.writeFileSync(
+        path.join(path.dirname(process.execPath), "app-config.json"),
+        JSON.stringify(APP_STATE),
+    );
+    console.log(
+        "APP_CONFIG saved to disk",
+        path.join(path.dirname(process.execPath), "app-config.json"),
+    );
+}
+
+// #endregion
+
+import "./events";
