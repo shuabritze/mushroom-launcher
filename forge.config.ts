@@ -9,10 +9,13 @@ import 'dotenv/config';
 const config: ForgeConfig = {
     packagerConfig: {
         asar: true,
+        icon: "./images/icon.ico",
     },
     rebuildConfig: {},
     makers: [new MakerSquirrel({
         copyright: 'MIT License Copyright © 2024 shuabritze',
+        iconUrl: "https://raw.githubusercontent.com/shuabritze/mushroom-launcher/refs/heads/main/electron/resources/icon.ico",
+        setupIcon: "./images/installericon.ico",
     }), new MakerZIP({}, ['darwin'])],
     plugins: [
         new VitePlugin({

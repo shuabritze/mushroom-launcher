@@ -18,6 +18,5 @@ Once you launch a server for the first time, you can skip the launcher by direct
 ## 🛫 Dev quick start
 
 1. Clone Repo
-2. Install bun `irm bun.sh/install.ps1 | iex`
-3. Run `bun install`
-4. Run `bun run dev`
+3. Run `yarn install`
+4. Run `yarn start`
