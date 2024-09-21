@@ -1,12 +1,4 @@
-<<<<<<< Updated upstream
-import { useState } from "react";
-import "./App.css";
-
-function App() {
-    return <></>;
-=======
 import { useEffect, useState } from "react";
-import "./App.css";
 
 import { characters } from "../assets/characters";
 import { backgrounds } from "../assets/backgrounds";
@@ -114,7 +106,6 @@ function App() {
             </div>
         </>
     );
->>>>>>> Stashed changes
 }
 
 export default App;

@@ -23,7 +23,7 @@ const config: ForgeConfig = {
         new MakerSquirrel({
             copyright: "MIT License Copyright © 2024 shuabritze",
             iconUrl:
-                "https://raw.githubusercontent.com/shuabritze/mushroom-launcher/refs/heads/main/electron/resources/icon.ico",
+                "https://raw.githubusercontent.com/shuabritze/mushroom-launcher/refs/tags/v1.1.1/images/icon.ico",
             setupIcon: "./images/installericon.ico",
         }),
         new MakerZIP({}, ["darwin"]),

@@ -63,11 +63,11 @@ const createWindow = () => {
     // Load APP_CONFIG
     if (
         fs.existsSync(
-            path.join(path.dirname(process.execPath), "app-config.json"),
+            path.join(path.dirname(process.execPath), "../app-config.json"),
         )
     ) {
         fs.readFile(
-            path.join(path.dirname(process.execPath), "app-config.json"),
+            path.join(path.dirname(process.execPath), "../app-config.json"),
             (err, data) => {
                 if (err) {
                     dialog.showMessageBox({
@@ -123,12 +123,12 @@ export let APP_STATE = {
 
 export function SaveConfig() {
     fs.writeFileSync(
-        path.join(path.dirname(process.execPath), "app-config.json"),
+        path.join(path.dirname(process.execPath), "../app-config.json"),
         JSON.stringify(APP_STATE),
     );
     console.log(
         "APP_CONFIG saved to disk",
-        path.join(path.dirname(process.execPath), "app-config.json"),
+        path.join(path.dirname(process.execPath), "../app-config.json"),
     );
 }
 

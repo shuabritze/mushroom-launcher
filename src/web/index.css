@@ -1,8 +1,6 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-<<<<<<< Updated upstream
-=======
 
 @layer base {
     .dark {
@@ -95,4 +93,3 @@
         @apply bg-background text-foreground font-sans;
     }
 }
->>>>>>> Stashed changes

@@ -2,20 +2,6 @@ const { fontFamily } = require("tailwindcss/defaultTheme")
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-<<<<<<< Updated upstream:tailwind.config.js
-  content: [
-    "./index.html",
-    "./src/web/**/*.{js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-}
-<<<<<<< Updated upstream:tailwind.config.ts
-
-=======
-=======
     darkMode: ["class"],
     content: ["src/web/**/*.{ts,tsx}"],
     theme: {
@@ -88,5 +74,3 @@ module.exports = {
     },
     plugins: [require("tailwindcss-animate")],
 };
->>>>>>> Stashed changes:tailwind.config.ts
->>>>>>> Stashed changes:tailwind.config.js
