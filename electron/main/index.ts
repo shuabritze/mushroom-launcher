@@ -1,7 +1,8 @@
 import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { release } from 'os'
-import { join, dirname } from 'path'
+import { join, dirname, basename } from 'path'
 import fs from 'fs';
+import https from 'https';
 
 const electron = require('electron');
 const child_process = require('child_process');
@@ -12,6 +13,9 @@ let APP_CONFIG = {
   clientLocation: '',
   serverList: [],
 };
+
+let isPatching = false;
+let downloadProgress = 0;
 
 // Disable GPU Acceleration for Windows 7
 if (release().startsWith('6.1')) app.disableHardwareAcceleration()
@@ -152,6 +156,90 @@ patch_input_text=true`);
       run_script('dotnet', [`${maple2edit}`, `"${clientUrl}"`], () => { }, 'patch');
     }
 
+    if (url.startsWith('xml:')) {
+      if (isPatching) {
+        dialog.showMessageBox({
+          title: 'Mushroom Launcher',
+          type: 'warning',
+          message: 'XML Patching already in progress.\r\n'
+        });
+        return { action: 'deny' };
+      }
+      setImmediate(async () => {
+        try {
+          isPatching = true;
+          const clientUrl = url.replace('xml:', '');
+          const exe = join(clientUrl, 'x64', 'MapleStory2.exe');
+          if (!fs.existsSync(exe)) {
+            dialog.showMessageBox({
+              title: 'Mushroom Launcher',
+              type: 'warning',
+              message: 'Patching failed. (Could not find MapleStory2.exe)\r\n'
+            });
+            return { action: 'deny' };
+          }
+
+          // Copy Xml.m2d and Xml.m2h
+          if (fs.existsSync(join(clientUrl, 'Data', 'Xml.m2d')) && !fs.existsSync(join(clientUrl, 'Data', 'Xml.m2d.bak'))) {
+            fs.copyFileSync(join(clientUrl, 'Data', 'Xml.m2d'), join(clientUrl, 'Data', 'Xml.m2d.bak'));
+            fs.copyFileSync(join(clientUrl, 'Data', 'Xml.m2h'), join(clientUrl, 'Data', 'Xml.m2h.bak'));
+          }
+
+          const filesToGet = [
+            'aHR0cHM6Ly9naXRodWIuY29tL1ppbnRpeHgvTWFwbGVTdG9yeTItWE1ML3JlbGVhc2VzL2xhdGVzdC9kb3dubG9hZC9YbWwubTJk',
+            'aHR0cHM6Ly9naXRodWIuY29tL1ppbnRpeHgvTWFwbGVTdG9yeTItWE1ML3JlbGVhc2VzL2xhdGVzdC9kb3dubG9hZC9YbWwubTJo',
+            'aHR0cHM6Ly9naXRodWIuY29tL1ppbnRpeHgvTWFwbGVTdG9yeTItWE1ML3JlbGVhc2VzL2xhdGVzdC9kb3dubG9hZC9TZXJ2ZXIubTJk',
+            'aHR0cHM6Ly9naXRodWIuY29tL1ppbnRpeHgvTWFwbGVTdG9yeTItWE1ML3JlbGVhc2VzL2xhdGVzdC9kb3dubG9hZC9TZXJ2ZXIubTJo'
+          ];
+
+          const downloads: Promise<boolean>[] = [];
+          for (const file of filesToGet) {
+            const url = Buffer.from(file, 'base64').toString('ascii');
+            const name = basename(url);
+            const p = new Promise<boolean>((resolve, reject) => {
+              downloadFile(url, join(clientUrl, 'Data', name), (err) => {
+                if (err) {
+                  console.log(err);
+                  resolve(false);
+                } else {
+                  resolve(true);
+                }
+              });
+            });
+
+            downloads.push(p);
+          }
+
+          const results = await Promise.all(downloads);
+          if (!results.every(result => result)) {
+            dialog.showMessageBox({
+              title: 'Mushroom Launcher',
+              type: 'warning',
+              message: `Download failed. One or more files failed to download. ${results.map((r, i) => `Download ${i + 1} ${r ? 'success' : 'failure'}`).join(', ')}\r\n`
+            });
+            return { action: 'deny' };
+          }
+
+          dialog.showMessageBox({
+            title: 'Mushroom Launcher',
+            type: 'info',
+            message: 'XML Patching complete.\r\n',
+          });
+        }
+        catch (err) {
+          dialog.showMessageBox({
+            title: 'Mushroom Launcher',
+            type: 'warning',
+            message: 'XML Patching failed.\r\n' + err.message
+          });
+          return { action: 'deny' };
+        }
+        finally {
+          isPatching = false;
+        }
+      });
+    }
+
     return { action: 'deny' }
   })
 
@@ -267,6 +355,11 @@ ipcMain.on('remove-server-from-list', (event, arg) => {
   event.returnValue = undefined;
 });
 
+ipcMain.on('get-download-progress', (event, arg) => {
+  console.log(downloadProgress, isPatching);
+  event.returnValue = isPatching ? downloadProgress : -1;
+});
+
 // This function will output the lines from the script 
 // and will return the full combined output
 // as well as exit code when it's done (using the callback).
@@ -356,5 +449,35 @@ function checkPort(ip, port, timeout = 2000) {
     });
 
     socket.connect(port, ip);
+  });
+}
+
+function downloadFile(url, dest, cb) {
+  const file = fs.createWriteStream(dest);
+  https.get(url, function (response) {
+    if (response.statusCode === 302) {
+      // Redirect
+      file.close();
+      return downloadFile(response.headers.location, dest, cb);
+    }
+    const total = parseInt(response.headers['content-length'], 10);
+    let downloaded = 0;
+
+    response.pipe(file);
+
+    response.on('data', (data) => {
+      downloaded += data.length;
+      const progress = Math.floor((downloaded / total) * 100);
+      // Add to downloadProgress average of 4 streams
+      downloadProgress = (downloadProgress * 3 + progress) / 4;
+    });
+
+    file.on('finish', function () {
+      file.close(cb);
+    });
+  }).on('error', function (err) {
+    console.log('Error downloading file: ' + err.message);
+    fs.unlink(dest, function () { });
+    if (cb) cb(err.message);
   });
 }

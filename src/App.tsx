@@ -33,6 +33,10 @@ const getServerList = () => {
   return ipcRenderer.sendSync('get-server-list');
 };
 
+const getDownloadProgress = () => {
+  return ipcRenderer.sendSync('get-download-progress');
+};
+
 const addServerToList = (ip: string, port: number, name: string) => {
   return ipcRenderer.sendSync('add-server-to-list', ip, port, name);
 };
@@ -70,6 +74,8 @@ const App: Component = () => {
 
   const [showAddServerModal, setShowAddServerModal] = createSignal(false);
 
+  const [progress, setProgress] = createSignal(0);
+
   const addServer = (ip: string, port: number, name: string) => {
     addServerToList(ip, port, name);
     setServerList(getServerList());
@@ -84,6 +90,31 @@ const App: Component = () => {
   const launchServer = (server: ServerEntry) => {
     window.open(`maple:${server.ip}:${server.port}`);
   };
+
+  const patchXml = async () => {
+    // Wait for the download to start
+    let timeout = 0;
+    while (getDownloadProgress() === -1) {
+      if (timeout > 300) {
+        setProgress(0);
+        return;
+      }
+      console.log('waiting');
+      timeout++;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    const ticker = setInterval(() => {
+      const progress = getDownloadProgress();
+      console.log(progress);
+      if (progress === -1) {
+        clearInterval(ticker);
+        setProgress(0);
+      } else {
+        setProgress(progress);
+      }
+    }, 50);
+  }
 
   onMount(() => {
     setClientUrl(getClientLocation());
@@ -106,8 +137,8 @@ const App: Component = () => {
         background: `url(${background}) no-repeat center center fixed`,
         "background-size": "cover"
       }}>
-        <div class="w-full h-full flex flex-col pb-[6rem] text-white">
-          <h1 class="w-full text-[1rem] font-bold p-4 drop-shadow-md bg-black/50 flex justify-between">Mushroom Launcher <span>{`v1.0.4`}</span></h1>
+        <div class="w-full h-full flex flex-col pb-[6rem] gap-1 text-white">
+          <h1 class="w-full text-[1rem] font-bold p-4 drop-shadow-md bg-black/50 flex justify-between">Mushroom Launcher <span>{`v1.0.5`}</span></h1>
           <div class="w-1/2 h-full p-4 overflow-hidden">
             <div class="bg-black/50 w-full h-full rounded-md flex flex-col overflow-hidden">
               <div class="text-center bg-black/50 cursor-pointer text-sm h-[3rem] flex items-center justify-center" onClick={() => setShowAddServerModal(true)}>Add Server +</div>
@@ -129,6 +160,15 @@ const App: Component = () => {
               <div class="text-blue-400 underline">Change Install Location</div>
             </div>
           </div>
+          <div class="px-4 mr-8 h-2">
+            <Show when={progress() > 0}>
+              <div class="w-1/2 h-2 bg-gray-600 rounded-md overflow-hidden relative ">
+                <div class="bg-blue-800 h-2" style={{
+                  'width': `${progress()}%`
+                }}></div>
+              </div>
+            </Show>
+          </div>
         </div>
         <div>
         </div>
@@ -138,6 +178,7 @@ const App: Component = () => {
         <BottomButton text="LAUNCH" color="bg-yellow-600" link={`maple:${selectedServer()?.ip}:${selectedServer()?.port}`} />
         <BottomButton text="PATCH" link={`patch:${clientUrl()}`} />
         <BottomButton text="INSTALL CLIENT" link={`download:${clientUrl()}`} />
+        <BottomButton text="PATCH XML" link={`xml:${clientUrl()}`} onClick={patchXml} />
         <BottomButton text="GITHUB" link="https://github.com/shuabritze/mushroom-launcher" />
       </div>
     </div>
@@ -154,8 +195,8 @@ const ServerListItem = (props: { server: ServerEntry, selected: boolean, onSelec
   </div>
 };
 
-const BottomButton = (props: { text: string; color?: string; link?: string; }) => {
-  return <a href={props.link ?? "#"} target="_blank"><span class={`${props.color ? props.color : 'bg-slate-800'} p-3 rounded-md text-white cursor-pointer hover:bg-slate-600`}>{props.text}</span></a>
+const BottomButton = (props: { text: string; color?: string; link?: string; onClick?: () => void; }) => {
+  return <a href={props.link ?? "#"} onClick={props.onClick} target="_blank"><span class={`${props.color ? props.color : 'bg-slate-800'} p-3 rounded-md text-white cursor-pointer hover:bg-slate-600`}>{props.text}</span></a>
 };
 
 export default App;
