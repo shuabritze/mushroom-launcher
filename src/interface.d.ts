@@ -14,6 +14,9 @@ export interface IElectronAPI {
     patchClient: () => Promise<[boolean, string]>;
     patchXML: () => Promise<[boolean, string]>;
     getPatchProgress: () => Promise<number>;
+    getDownloadProgress: () => Promise<number>;
+    getDownloadFile: () => Promise<string>;
+    getDownloadEta: () => Promise<number>;
 }
 
 declare global {

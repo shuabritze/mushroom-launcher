@@ -1,6 +1,10 @@
 import { app, dialog, ipcMain } from "electron";
 import { APP_STATE, SaveConfig } from "./main";
-import { checkPort, downloadFile, run_script } from "./lib";
+import { checkPort, downloadFile } from "./lib";
+import { PatchDLL } from "./patch-dll";
+import { DownloadClient } from "./download-client";
+
+import logger from "electron-log/main";
 
 import path from "path";
 import fs from "fs";
@@ -16,7 +20,7 @@ ipcMain.handle("get-server-list", async () => {
 
 ipcMain.handle("get-online-status", async (_, id) => {
     const server = APP_STATE.servers.find((server) => server.id === id);
-    console.log(server);
+    logger.info(server);
     if (!server) {
         return false;
     }
@@ -133,11 +137,7 @@ ipcMain.handle("patch-client", async () => {
     fs.copyFileSync(Maple2, path.join(clientPath, "x64", "Maple2.dll"));
 
     // Update NxCharacter64.dll to include Maple2.dll in the imports
-    await new Promise<void>((resolve) => {
-        run_script("dotnet", [`${Maple2Edit}`, `"${clientPath}"`], (code) => {
-            resolve();
-        });
-    });
+    await PatchDLL(nxCharacter);
 
     return [true, "Patched"];
 });
@@ -146,6 +146,33 @@ let patchProgress = -1;
 
 ipcMain.handle("get-patch-progress", async () => {
     return patchProgress;
+});
+
+let downloadProgress = -1;
+let currentFileDownload = "";
+let downloadEta = -1;
+export const setDownloadProgress = (progress: number) => {
+    downloadProgress = progress;
+};
+
+export const setDownloadFile = (file: string) => {
+    currentFileDownload = file;
+};
+
+export const setDownloadEta = (eta: number) => {
+    downloadEta = eta;
+};
+
+ipcMain.handle("get-download-progress", async () => {
+    return downloadProgress;
+});
+
+ipcMain.handle("get-download-file", async () => {
+    return currentFileDownload;
+});
+
+ipcMain.handle("get-download-eta", async () => {
+    return downloadEta;
 });
 
 ipcMain.handle("patch-xml", async () => {
@@ -195,7 +222,7 @@ ipcMain.handle("patch-xml", async () => {
                 path.join(clientPath, "Data", name),
                 (err) => {
                     if (err) {
-                        console.log(err);
+                        logger.info(err);
                         resolve(false);
                     } else {
                         resolve(true);
@@ -222,21 +249,6 @@ ipcMain.handle("patch-xml", async () => {
     return [true, "Patched"];
 });
 
-const Downloader = app.isPackaged
-    ? path.join(process.resourcesPath, "./DepotDownloaderMod.dll")
-    : path.join(__dirname, "../../src/patcher/DepotDownloaderMod.dll");
-
-const DepotKey = app.isPackaged
-    ? path.join(process.resourcesPath, "./depot.key")
-    : path.join(__dirname, "../../src/patcher/depot.key");
-
-const Manifest = app.isPackaged
-    ? path.join(process.resourcesPath, "./560381_3190888022545443868.manifest")
-    : path.join(
-          __dirname,
-          "../../src/patcher/560381_3190888022545443868.manifest",
-      );
-
 ipcMain.handle("install-client", async () => {
     const clientPath = APP_STATE.clientPath;
     if (!clientPath) {
@@ -248,23 +260,26 @@ ipcMain.handle("install-client", async () => {
         return [false, "Client already exists at the given location"];
     }
 
-    await new Promise<void>((resolve) => {
-        run_script(
-            "dotnet",
-            [
-                `${Downloader}`,
-                `-app 560380`,
-                `-depot 560381`,
-                `-depotkeys ${DepotKey}`,
-                `-manifest 3190888022545443868`,
-                `-manifestfile ${Manifest}`,
-                `-dir "${clientPath}"`,
-            ],
-            (code) => {
-                resolve();
-            },
-        );
+    logger.info("Downloading client...");
+
+    downloadProgress = 0;
+    currentFileDownload = "";
+
+    const errs: Error[] = [];
+
+    await DownloadClient(clientPath, (err) => {
+        if (err) {
+            logger.info(err);
+            errs.push(err);
+        }
     });
 
-    return [true, "Installed"];
+    downloadProgress = -1;
+    currentFileDownload = "";
+
+    if (errs.length) {
+        return [false, errs.map((err) => err.message).join("\n")];
+    }
+
+    return [true, `Installed at ${clientPath}`];
 });

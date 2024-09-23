@@ -3,6 +3,8 @@ import path from "path";
 import fs from "fs";
 import "dotenv/config";
 
+import logger from "electron-log/main";
+
 // #region Squirrel Installer
 import ess from "electron-squirrel-startup";
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -27,9 +29,9 @@ const createWindow = () => {
     const mainWindow = new BrowserWindow({
         resizable: true,
         width: 1024,
-        height: 640,
+        height: 680,
         minWidth: 1024,
-        minHeight: 640,
+        minHeight: 680,
         autoHideMenuBar: true,
         webPreferences: {
             preload: path.join(__dirname, "preload.js"),
@@ -82,7 +84,7 @@ const createWindow = () => {
 
                 for (const server of APP_STATE.servers) {
                     checkPort(server.ip, server.port).then((available) => {
-                        console.log(
+                        logger.info(
                             `Server ${server.name} is ${available ? "online" : "offline"}`,
                         );
                         server.online = available;
@@ -126,7 +128,7 @@ export function SaveConfig() {
         path.join(path.dirname(process.execPath), "../app-config.json"),
         JSON.stringify(APP_STATE),
     );
-    console.log(
+    logger.info(
         "APP_CONFIG saved to disk",
         path.join(path.dirname(process.execPath), "../app-config.json"),
     );

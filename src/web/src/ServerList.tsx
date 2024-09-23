@@ -266,7 +266,7 @@ export const ServerList = ({
                             key={server.id}
                             onClick={() => handleServerSelected(server)}
                             onDoubleClick={() => handleServerLaunched(server)}
-                            className={`flex cursor-pointer items-center gap-2 rounded-sm p-2 hover:bg-black/25 ${selectedServer.id === server.id ? "ring-primary/50 ring-2 ring-inset" : ""}`}
+                            className={`flex cursor-pointer items-center gap-2 rounded-sm p-2 hover:bg-black/25 ${selectedServer.id === server.id ? "ring-2 ring-inset ring-primary/50" : ""}`}
                         >
                             <div className="flex w-full flex-col gap-2">
                                 <div className="flex items-center gap-2">

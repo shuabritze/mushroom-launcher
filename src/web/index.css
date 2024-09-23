@@ -73,7 +73,9 @@
 @layer base {
     * {
         @apply border-border;
-        font-feature-settings: "rlig" 1, "calt" 1;
+        font-feature-settings:
+            "rlig" 1,
+            "calt" 1;
 
         /* Scrollbar */
         ::-webkit-scrollbar {
@@ -90,6 +92,6 @@
         }
     }
     body {
-        @apply bg-background text-foreground font-sans;
+        @apply bg-background font-sans text-foreground;
     }
 }

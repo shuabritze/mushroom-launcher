@@ -18,4 +18,7 @@ contextBridge.exposeInMainWorld("electron", {
     patchClient: () => ipcRenderer.invoke("patch-client"),
     patchXML: () => ipcRenderer.invoke("patch-xml"),
     getPatchProgress: () => ipcRenderer.invoke("get-patch-progress"),
+    getDownloadProgress: () => ipcRenderer.invoke("get-download-progress"),
+    getDownloadFile: () => ipcRenderer.invoke("get-download-file"),
+    getDownloadEta: () => ipcRenderer.invoke("get-download-eta"),
 });
