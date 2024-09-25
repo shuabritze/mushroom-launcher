@@ -1,4 +1,9 @@
 import SteamUser from "steam-user";
+//@ts-expect-error
+import SteamCrypto from "@doctormckay/steam-crypto";
+import genericPool from "generic-pool";
+import { Transform } from "stream";
+
 import { app } from "electron";
 
 import logger from "electron-log/main";
@@ -9,10 +14,8 @@ import ContentManifest from "steam-user/components/content_manifest";
 import path from "path";
 import fs from "fs";
 import { setDownloadEta, setDownloadFile, setDownloadProgress } from "./events";
-
-const DepotKey = app.isPackaged
-    ? path.join(process.resourcesPath, "./depot.key")
-    : path.join(__dirname, "../../src/patcher/depot.key");
+import axios, { Axios } from "axios";
+import { decompressFile } from "./lib";
 
 const Manifest = app.isPackaged
     ? path.join(process.resourcesPath, "./560381_3190888022545443868.manifest")
@@ -21,8 +24,23 @@ const Manifest = app.isPackaged
           "../../src/patcher/560381_3190888022545443868.manifest",
       );
 
+const APP_ID = 560380;
+const DEPOT_ID = 560381;
+const MANIFEST = "3190888022545443868";
+const KEY = Buffer.from(
+    "9bdb5693b8cbe239bd87eb147abacb8ae4aa446744d1ca4a323bac611174bc8c",
+    "hex",
+);
+const IGNORE_FILES = [".asar"];
+
 interface FileEntry {
-    chunks: Array<string>;
+    chunks: {
+        sha: string;
+        crc: number;
+        offset: string;
+        cb_original: number;
+        cb_compressed: number;
+    }[];
     filename: string;
     size: string;
     flags: number;
@@ -30,16 +48,186 @@ interface FileEntry {
     sha_content: string;
 }
 
+interface CDNServer {
+    type: string;
+    sourceid: string;
+    cell: string;
+    load: string;
+    preferred_server: string;
+    weightedload: string;
+    NumEntriesInClientList: number;
+    Host: string;
+    vhost: string;
+    https_support: string;
+}
+
+const AsyncDownloadChunks = async (
+    user: SteamUser,
+    cdn: CDNServer,
+    file: FileEntry,
+    clientPath: string,
+    progressCb: (downloaded: number) => void,
+) => {
+    const chunks = file.chunks;
+
+    const filePath = path.join(clientPath, file.filename);
+    const downloadUrl = `https://${cdn.Host}/depot/${DEPOT_ID}/chunk/`;
+
+    // let promiseQueue = [];
+
+    for (const chunk of chunks) {
+        try {
+            const res = await axios.get(`${downloadUrl}${chunk.sha}`, {
+                responseType: "arraybuffer",
+                headers: {
+                    "Content-Type": "application/octet-stream",
+                    "Accept-Encoding": "gzip",
+                    "User-Agent": "Valve/Steam HTTP Client 1.0",
+                },
+            });
+            const fileStream = fs.createWriteStream(filePath, {
+                start: parseInt(chunk.offset, 10),
+                flags: "r+",
+            });
+
+            // promiseQueue.push(
+            //     decompressFile(
+            //         SteamCrypto.symmetricDecrypt(res.data, KEY),
+            //         fileStream,
+            //         () => {
+            //             progressCb(chunk.cb_original);
+            //             fileStream.close();
+            //         },
+            //     ),
+            // );
+            await decompressFile(
+                SteamCrypto.symmetricDecrypt(res.data, KEY),
+                fileStream,
+                () => {
+                    progressCb(chunk.cb_original);
+                    fileStream.close();
+                },
+            );
+        } catch (err) {
+            // logger.error(err);
+            // Retry
+            chunks.push(chunk);
+        }
+    }
+    // await Promise.all(promiseQueue);
+};
+
+const AsyncDepotDownload = async (
+    user: SteamUser,
+    files: FileEntry[],
+    clientPath: string,
+    progressCb: (downloaded: number) => void,
+) => {
+    // @ts-expect-error
+    const { servers }: { servers: CDNServer[] } = await user.getContentServers([
+        APP_ID,
+    ]);
+
+    logger.info("Pre-allocating files....");
+
+    const chunkSize = 1024 * 1024; // 1MB
+    const chunk = Buffer.alloc(chunkSize);
+
+    for (const file of files) {
+        const filePath = path.join(clientPath, file.filename);
+        if (!file.chunks.length) {
+            if (!fs.existsSync(filePath)) {
+                fs.mkdirSync(filePath, { recursive: true });
+            }
+            continue;
+        }
+
+        if (
+            IGNORE_FILES.some((ignoreFile) =>
+                file.filename.includes(ignoreFile),
+            )
+        ) {
+            continue;
+        }
+        if (!fs.existsSync(filePath)) {
+            // Write the file and any missing directories
+            if (!fs.existsSync(path.dirname(filePath))) {
+                fs.mkdirSync(path.dirname(filePath), { recursive: true });
+            }
+            const writeStream = fs.createWriteStream(filePath);
+            const totalSize = +file.size;
+            for (let i = 0; i < totalSize; i += chunkSize) {
+                if (i + chunkSize > totalSize) {
+                    writeStream.write(chunk.slice(0, totalSize - i));
+                } else {
+                    writeStream.write(chunk);
+                }
+            }
+            writeStream.end();
+            writeStream.close();
+        }
+    }
+    logger.info("Pre-allocation complete");
+
+    // Wait for garbage collection :(
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const inUse = new Set<string>();
+
+    const maxConcurrentDownloads = Math.min(servers.length, 8);
+
+    const cdnFactory = {
+        create: async () => {
+            const server = servers.filter(
+                (server) => !inUse.has(server.Host),
+            )[0];
+            inUse.add(server.Host);
+            return server;
+        },
+        destroy: async (client: CDNServer) => {
+            inUse.delete(client.Host);
+        },
+    };
+
+    const cdnPool = genericPool.createPool(cdnFactory, {
+        max: maxConcurrentDownloads,
+        min: 2,
+        acquireTimeoutMillis: 600000,
+    });
+
+    const total_files = files.filter((file) => !!file.chunks.length).length;
+    let i = 0;
+    for (const file of files) {
+        if (
+            !file.chunks.length ||
+            IGNORE_FILES.some((ignoreFile) =>
+                file.filename.includes(ignoreFile),
+            )
+        ) {
+            continue;
+        }
+
+        logger.info("Downloading file", file.filename);
+        setDownloadFile(`(${++i} / ${total_files}) ${file.filename}`);
+        const cdn = await cdnPool.acquire();
+        logger.info("Acquired cdn", cdn.Host);
+        try {
+            AsyncDownloadChunks(user, cdn, file, clientPath, progressCb).then(
+                () => {
+                    cdnPool.release(cdn);
+                },
+            );
+        } catch (err) {
+            logger.error(`Error downloading file ${file.filename}`, err);
+            cdnPool.release(cdn);
+        }
+    }
+};
+
 export const DownloadClient = async (
     clientPath: string,
     cb: (err: Error) => void,
 ) => {
-    const APP_ID = 560380;
-    const DEPOT_ID = 560381;
-    const MANIFEST = "3190888022545443868";
-    const KEY =
-        "9bdb5693b8cbe239bd87eb147abacb8ae4aa446744d1ca4a323bac611174bc8c";
-
     logger.info("Creating steam user");
 
     let user = new SteamUser({
@@ -48,16 +236,6 @@ export const DownloadClient = async (
             ? path.join(process.resourcesPath, "./steam")
             : path.join(__dirname, "../../src/patcher/steam"),
     });
-
-    // Override the default key
-    // @ts-expect-error
-    user.getDepotDecryptionKey = (appID, depotID, callback) => {
-        return new Promise((resolve) =>
-            resolve({
-                key: Buffer.from(KEY, "hex"),
-            }),
-        );
-    };
 
     logger.info("Logging into steam...");
 
@@ -93,95 +271,35 @@ export const DownloadClient = async (
             logger.info(
                 `Logged on to Steam as anonymous (${user.steamID.steam3()})`,
             );
-            // Pre-fetch content servers
-            // @ts-expect-error
-            await user.getContentServers([APP_ID]);
-
             const manifest = fs.readFileSync(Manifest);
             const parsed = ContentManifest.parse(manifest) as {
                 files: FileEntry[];
             };
-
-            // Sort by filesize descending
-            parsed.files.sort((a, b) => +b.size - +a.size);
 
             const totalDownload = parsed.files.reduce(
                 (acc, file) => acc + +file.size,
                 0,
             );
 
-            let downloaded = new Map<string, number>();
+            let totalDownloaded = 0;
 
-            const updateProgress = (currentBps: number) => {
-                const totalDownloaded = [...downloaded.values()].reduce(
-                    (acc, value) => acc + value,
-                    0,
-                );
-                const progress = Math.floor(
-                    (totalDownloaded / totalDownload) * 100,
-                );
-                setDownloadProgress(progress);
-                const remaining = totalDownload - totalDownloaded;
-                const eta = Math.floor(remaining / currentBps);
-                setDownloadEta(eta);
-            };
+            const startTime = Date.now();
 
-            const total_files = parsed.files.filter(
-                (file) => !!file.chunks.length,
-            ).length;
-            let i = 0;
-            for (const file of parsed.files) {
-                // Check if the file parent directory exists
-                const parentDir = path.dirname(
-                    path.join(clientPath, file.filename),
-                );
-                if (!fs.existsSync(parentDir)) {
-                    fs.mkdirSync(parentDir, { recursive: true });
-                }
-
-                if (!file.chunks.length) {
-                    continue;
-                }
-
-                logger.info(`Downloading manifest file: ${file.filename}`);
-                setDownloadFile(`(${++i} / ${total_files}) ${file.filename}`);
-
-                const startTime = Date.now();
-                // @ts-expect-error
-                await user.downloadFile(
-                    APP_ID,
-                    DEPOT_ID,
-                    file,
-                    path.join(clientPath, file.filename),
-                    (
-                        err: Error | null,
-                        progress: {
-                            type: string;
-                            bytesDownloaded: number;
-                            totalSizeBytes: number;
-                            complete: boolean;
-                        },
-                    ) => {
-                        if (err) {
-                            cb(err);
-                        }
-                        if (
-                            progress.bytesDownloaded &&
-                            !isNaN(progress.bytesDownloaded)
-                        ) {
-                            downloaded.set(
-                                file.filename,
-                                progress.bytesDownloaded,
-                            );
-
-                            const elapsedTime = (Date.now() - startTime) / 1000;
-                            const bps = progress.bytesDownloaded / elapsedTime;
-
-                            updateProgress(bps);
-                        }
-                    },
-                );
-            }
+            await AsyncDepotDownload(
+                user,
+                parsed.files,
+                clientPath,
+                (downloaded) => {
+                    if (isNaN(downloaded)) return;
+                    totalDownloaded += downloaded;
+                    setDownloadProgress(
+                        Math.floor((totalDownloaded / totalDownload) * 100),
+                    );
+                    const elapsedTime = (Date.now() - startTime) / 1000;
+                    const bps = totalDownloaded / elapsedTime;
+                    setDownloadEta(Math.floor(totalDownload / bps));
+                },
+            );
 
             user.logOff();
             resolve();

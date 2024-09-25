@@ -1,10 +1,10 @@
 import https from "https";
 import fs from "fs";
+import path from "path";
 import net from "net";
-import child_process from "child_process";
-import { join } from "path";
-import { dialog } from "electron";
-import { APP_STATE } from "./main";
+import { Worker } from "worker_threads";
+
+import logger from "electron-log/main";
 
 export function checkPort(ip: string, port: number, timeout = 2000) {
     return new Promise<boolean>((resolve) => {
@@ -24,7 +24,6 @@ export function checkPort(ip: string, port: number, timeout = 2000) {
         });
 
         socket.on("error", (err) => {
-            console.log(err);
             resolve(false);
         });
 
@@ -73,4 +72,33 @@ export function downloadFile(
             fs.unlink(dest, function () {});
             if (cb) cb(err.message);
         });
+}
+
+export function decompressFile(fileBuffer: Buffer, fileStream: fs.WriteStream, cb: () => void) {
+    return new Promise<void>((resolve, reject) => {
+        const worker = new Worker(path.join(__dirname, "./worker.js"), {
+            workerData: fileBuffer,
+        });
+
+        worker.on("message", (message) => {
+            if (message.success) {
+                // Write the decompressed data to the file
+                fileStream.write(message.data);
+                cb();
+                resolve();
+            } else {
+                reject(new Error(message.error));
+            }
+        });
+
+        worker.on("error", (err) => {
+            logger.error(err);
+            reject(err);
+        });
+        worker.on("exit", (code) => {
+            if (code !== 0) {
+                reject(new Error(`Worker stopped with exit code ${code}`));
+            }
+        });
+    });
 }

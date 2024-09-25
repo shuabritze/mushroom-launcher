@@ -23,6 +23,10 @@ export default defineConfig({
                             src: "node_modules/@doctormckay/steam-crypto/system.pem",
                             dest: ".vite/build",
                         },
+                        {
+                            src: "src/worker.js",
+                            dest: ".vite/build",
+                        },
                     ],
                 }),
             ],

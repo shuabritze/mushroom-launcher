@@ -5,6 +5,8 @@ import "dotenv/config";
 
 import logger from "electron-log/main";
 
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=8192');
+
 // #region Squirrel Installer
 import ess from "electron-squirrel-startup";
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -35,6 +37,7 @@ const createWindow = () => {
         autoHideMenuBar: true,
         webPreferences: {
             preload: path.join(__dirname, "preload.js"),
+            nodeIntegrationInWorker: true
         },
         icon: "./images/icon.ico",
     });
