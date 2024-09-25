@@ -74,7 +74,7 @@ export function downloadFile(
         });
 }
 
-export function decompressFile(fileBuffer: Buffer, fileStream: fs.WriteStream, cb: () => void) {
+export function decompressFile(fileBuffer: Buffer, fileStream: fs.WriteStream) {
     return new Promise<void>((resolve, reject) => {
         const worker = new Worker(path.join(__dirname, "./worker.js"), {
             workerData: fileBuffer,
@@ -83,9 +83,9 @@ export function decompressFile(fileBuffer: Buffer, fileStream: fs.WriteStream, c
         worker.on("message", (message) => {
             if (message.success) {
                 // Write the decompressed data to the file
-                fileStream.write(message.data);
-                cb();
-                resolve();
+                fileStream.write(message.data, () => {
+                    resolve();
+                });
             } else {
                 reject(new Error(message.error));
             }

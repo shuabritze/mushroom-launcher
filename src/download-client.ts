@@ -2,7 +2,7 @@ import SteamUser from "steam-user";
 //@ts-expect-error
 import SteamCrypto from "@doctormckay/steam-crypto";
 import genericPool from "generic-pool";
-import { Transform } from "stream";
+import https from "https";
 
 import { app } from "electron";
 
@@ -33,14 +33,17 @@ const KEY = Buffer.from(
 );
 const IGNORE_FILES = [".asar"];
 
+interface Chunk {
+    sha: string;
+    crc: number;
+    offset: string;
+    cb_original: number;
+    cb_compressed: number;
+    retries?: number;
+}
+
 interface FileEntry {
-    chunks: {
-        sha: string;
-        crc: number;
-        offset: string;
-        cb_original: number;
-        cb_compressed: number;
-    }[];
+    chunks: Chunk[];
     filename: string;
     size: string;
     flags: number;
@@ -61,72 +64,75 @@ interface CDNServer {
     https_support: string;
 }
 
+let cdnPool: genericPool.Pool<CDNServer>;
+
+const AsyncFetchChunk = async (
+    cdn: CDNServer,
+    chunk: Chunk,
+): Promise<Buffer> => {
+    try {
+        const downloadUrl = `${cdn.https_support === "mandatory" ? "https" : "http"}://${cdn.vhost || cdn.Host}/depot/${DEPOT_ID}/chunk/`;
+        const res = await axios.get(`${downloadUrl}${chunk.sha}`, {
+            responseType: "arraybuffer",
+            headers: {
+                "Content-Type": "application/octet-stream;charset=UTF-8",
+                "Accept-Encoding": "gzip, deflate",
+                "User-Agent": "Valve/Steam HTTP Client 1.0",
+            },
+        });
+
+        return SteamCrypto.symmetricDecrypt(res.data, KEY);
+    } catch (err) {
+        chunk.retries = chunk.retries ? chunk.retries + 1 : 1;
+        if (chunk.retries < 5) {
+            const newCdn = await cdnPool.acquire();
+            const fetched = await AsyncFetchChunk(newCdn, chunk);
+            cdnPool.release(newCdn);
+            return fetched;
+        } else {
+            logger.error("Failed to download chunk", chunk.sha, err);
+        }
+    }
+};
+
 const AsyncDownloadChunks = async (
-    user: SteamUser,
     cdn: CDNServer,
     file: FileEntry,
     clientPath: string,
     progressCb: (downloaded: number) => void,
 ) => {
     const chunks = file.chunks;
-
     const filePath = path.join(clientPath, file.filename);
-    const downloadUrl = `https://${cdn.Host}/depot/${DEPOT_ID}/chunk/`;
-
-    // let promiseQueue = [];
 
     const chunkQueue = [];
-    const retries = new Map<string, number>();
 
     for (const chunk of chunks) {
-        if (chunkQueue.length >= 8) {
+        if (chunkQueue.length >= 4) {
             await Promise.all(chunkQueue);
             chunkQueue.length = 0;
         }
 
         try {
-            const res = await axios.get(`${downloadUrl}${chunk.sha}`, {
-                responseType: "arraybuffer",
-                headers: {
-                    "Content-Type": "application/octet-stream",
-                    "Accept-Encoding": "gzip",
-                    "User-Agent": "Valve/Steam HTTP Client 1.0",
-                },
-            });
+            const chunkData = await AsyncFetchChunk(cdn, chunk);
+
             const fileStream = fs.createWriteStream(filePath, {
                 start: parseInt(chunk.offset, 10),
                 flags: "r+",
             });
 
-            // promiseQueue.push(
-            //     decompressFile(
-            //         SteamCrypto.symmetricDecrypt(res.data, KEY),
-            //         fileStream,
-            //         () => {
-            //             progressCb(chunk.cb_original);
-            //             fileStream.close();
-            //         },
-            //     ),
-            // );
-            chunkQueue.push(decompressFile(
-                SteamCrypto.symmetricDecrypt(res.data, KEY),
-                fileStream,
-                () => {
-                    progressCb(chunk.cb_original);
-                    fileStream.close();
-                },
-            ));
+            chunkQueue.push(
+                new Promise<void>((resolve) =>
+                    decompressFile(chunkData, fileStream).then(() => {
+                        progressCb(chunk.cb_original);
+                        fileStream.close();
+                        resolve();
+                    }),
+                ),
+            );
         } catch (err) {
-            retries.set(chunk.sha, retries.get(chunk.sha) || 0);
-            if (retries.get(chunk.sha)! < 5) {
-                chunks.push(chunk);
-                retries.set(chunk.sha, retries.get(chunk.sha)! + 1);
-            } else {
-                logger.error("Failed to download chunk", chunk.sha);
-            }
+            logger.error("Failed to decrypt chunk", chunk.sha, err);
         }
     }
-    // await Promise.all(promiseQueue);
 };
 
 const AsyncDepotDownload = async (
@@ -162,23 +168,44 @@ const AsyncDepotDownload = async (
             continue;
         }
         if (!fs.existsSync(filePath)) {
+            setDownloadFile("Allocating file " + file.filename);
             // Write the file and any missing directories
             if (!fs.existsSync(path.dirname(filePath))) {
                 fs.mkdirSync(path.dirname(filePath), { recursive: true });
             }
             const writeStream = fs.createWriteStream(filePath);
             const totalSize = +file.size;
+
+            const promises = [];
             for (let i = 0; i < totalSize; i += chunkSize) {
+                let writeBuffer = chunk;
                 if (i + chunkSize > totalSize) {
-                    writeStream.write(chunk.slice(0, totalSize - i));
-                } else {
-                    writeStream.write(chunk);
+                    writeBuffer = chunk.slice(0, totalSize - i);
+                }
+
+                promises.push(
+                    new Promise<void>((resolve) => {
+                        writeStream.write(writeBuffer, () => {
+                            resolve();
+                            setDownloadProgress(
+                                Math.floor((i / totalSize) * 100),
+                            );
+                        });
+                    }),
+                );
+
+                if (promises.length > 100) {
+                    await Promise.all(promises);
+                    promises.length = 0;
                 }
             }
+            // Wait for writes to finish
+            await Promise.all(promises);
             writeStream.end();
             writeStream.close();
         }
     }
+    setDownloadProgress(0);
     logger.info("Pre-allocation complete");
 
     // Wait for garbage collection :(
@@ -186,7 +213,7 @@ const AsyncDepotDownload = async (
 
     const inUse = new Set<string>();
 
-    const maxConcurrentDownloads = Math.min(servers.length, 8);
+    const maxConcurrentDownloads = Math.min(servers.length, 6);
 
     const cdnFactory = {
         create: async () => {
@@ -201,7 +228,7 @@ const AsyncDepotDownload = async (
         },
     };
 
-    const cdnPool = genericPool.createPool(cdnFactory, {
+    cdnPool = genericPool.createPool(cdnFactory, {
         max: maxConcurrentDownloads,
         min: 2,
         acquireTimeoutMillis: 600000,
@@ -224,11 +251,9 @@ const AsyncDepotDownload = async (
         const cdn = await cdnPool.acquire();
         logger.info("Acquired cdn", cdn.Host);
         try {
-            AsyncDownloadChunks(user, cdn, file, clientPath, progressCb).then(
-                () => {
-                    cdnPool.release(cdn);
-                },
-            );
+            AsyncDownloadChunks(cdn, file, clientPath, progressCb).then(() => {
+                cdnPool.release(cdn);
+            });
         } catch (err) {
             logger.error(`Error downloading file ${file.filename}`, err);
             cdnPool.release(cdn);
