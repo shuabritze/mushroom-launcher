@@ -75,7 +75,15 @@ const AsyncDownloadChunks = async (
 
     // let promiseQueue = [];
 
+    const chunkQueue = [];
+    const retries = new Map<string, number>();
+
     for (const chunk of chunks) {
+        if (chunkQueue.length >= 8) {
+            await Promise.all(chunkQueue);
+            chunkQueue.length = 0;
+        }
+
         try {
             const res = await axios.get(`${downloadUrl}${chunk.sha}`, {
                 responseType: "arraybuffer",
@@ -100,18 +108,22 @@ const AsyncDownloadChunks = async (
             //         },
             //     ),
             // );
-            await decompressFile(
+            chunkQueue.push(decompressFile(
                 SteamCrypto.symmetricDecrypt(res.data, KEY),
                 fileStream,
                 () => {
                     progressCb(chunk.cb_original);
                     fileStream.close();
                 },
-            );
+            ));
         } catch (err) {
-            // logger.error(err);
-            // Retry
-            chunks.push(chunk);
+            retries.set(chunk.sha, retries.get(chunk.sha) || 0);
+            if (retries.get(chunk.sha)! < 5) {
+                chunks.push(chunk);
+                retries.set(chunk.sha, retries.get(chunk.sha)! + 1);
+            } else {
+                logger.error("Failed to download chunk", chunk.sha);
+            }
         }
     }
     // await Promise.all(promiseQueue);
