@@ -255,11 +255,6 @@ ipcMain.handle("install-client", async () => {
         return [false, "No Install Location Set"];
     }
 
-    const clientExe = path.join(clientPath, "x64", "MapleStory2.exe");
-    if (fs.existsSync(clientExe)) {
-        return [false, "Client already exists at the given location"];
-    }
-
     logger.info("Downloading client...");
 
     downloadProgress = 0;

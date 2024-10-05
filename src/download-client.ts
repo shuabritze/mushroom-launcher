@@ -2,7 +2,7 @@ import SteamUser from "steam-user";
 //@ts-expect-error
 import SteamCrypto from "@doctormckay/steam-crypto";
 import genericPool from "generic-pool";
-import https from "https";
+import crypto from "crypto";
 
 import { app } from "electron";
 
@@ -49,6 +49,7 @@ interface FileEntry {
     flags: number;
     sha_filename: string;
     sha_content: string;
+    downloaded?: boolean;
 }
 
 interface CDNServer {
@@ -107,7 +108,7 @@ const AsyncDownloadChunks = async (
     const chunkQueue = [];
 
     for (const chunk of chunks) {
-        if (chunkQueue.length >= 4) {
+        if (chunkQueue.length >= 6) {
             await Promise.all(chunkQueue);
             chunkQueue.length = 0;
         }
@@ -135,16 +136,84 @@ const AsyncDownloadChunks = async (
     }
 };
 
+const VerifyFile = async (filePath: string, file: FileEntry) => {
+    if (!fs.existsSync(filePath)) {
+        return false;
+    }
+
+    // SHA1 hash of the file
+    const fileHash = crypto.createHash("sha1");
+    setDownloadProgress(30);
+
+    const rs = fs.createReadStream(filePath);
+    rs.on("data", (chunk) => {
+        fileHash.update(chunk);
+    });
+
+    await new Promise((resolve, reject) => {
+        rs.on("end", resolve);
+        rs.on("error", reject);
+    });
+
+    setDownloadProgress(50);
+
+    const hash = fileHash.digest("hex");
+    if (hash !== file.sha_content) {
+        logger.error(
+            "File hash mismatch",
+            file.filename,
+            file.sha_content,
+            hash,
+        );
+        return false;
+    }
+    return true;
+};
+
 const AsyncDepotDownload = async (
     user: SteamUser,
     files: FileEntry[],
     clientPath: string,
-    progressCb: (downloaded: number) => void,
+    progressCb: (downloaded: number, totalDownload: number) => void,
 ) => {
     // @ts-expect-error
     const { servers }: { servers: CDNServer[] } = await user.getContentServers([
         APP_ID,
     ]);
+
+    // Verify integrity of files if already present
+    const clientExe = path.join(clientPath, "x64", "MapleStory2.exe");
+    if (fs.existsSync(clientExe)) {
+        let i = 0;
+        const total = files.filter((file) => !!file.chunks.length).length;
+        for (const file of files) {
+            if (
+                !file.chunks.length ||
+                IGNORE_FILES.some((ignoreFile) =>
+                    file.filename.includes(ignoreFile),
+                )
+            ) {
+                continue;
+            }
+
+            setDownloadFile(`(${++i} / ${total}) Verifying ${file.filename}`);
+            setDownloadProgress(25);
+            const filePath = path.join(clientPath, file.filename);
+            if (!(await VerifyFile(filePath, file))) {
+                logger.error("File integrity check failed, redownloading " + file.filename);
+                file.downloaded = false;
+            } else {
+                file.downloaded = true;
+            }
+            setDownloadProgress(100);
+        }
+
+        files = files.filter((file) => !file.downloaded);
+
+        logger.info(
+            `Verified game files, ${files.length} need to be reacquired`,
+        );
+    }
 
     logger.info("Pre-allocating files....");
 
@@ -205,6 +274,7 @@ const AsyncDepotDownload = async (
             writeStream.close();
         }
     }
+    
     setDownloadProgress(0);
     logger.info("Pre-allocation complete");
 
@@ -234,7 +304,13 @@ const AsyncDepotDownload = async (
         acquireTimeoutMillis: 600000,
     });
 
+    const downloadingChunks: Promise<void>[] = [];
+
     const total_files = files.filter((file) => !!file.chunks.length).length;
+    const totalDownload = files.reduce(
+        (acc, file) => acc + +file.size,
+        0,
+    );
     let i = 0;
     for (const file of files) {
         if (
@@ -251,14 +327,23 @@ const AsyncDepotDownload = async (
         const cdn = await cdnPool.acquire();
         logger.info("Acquired cdn", cdn.Host);
         try {
-            AsyncDownloadChunks(cdn, file, clientPath, progressCb).then(() => {
-                cdnPool.release(cdn);
-            });
+            downloadingChunks.push(
+                AsyncDownloadChunks(cdn, file, clientPath, (downloaded: number) => progressCb(downloaded, totalDownload)).then(
+                    () => {
+                        cdnPool.release(cdn);
+                    },
+                ),
+            );
         } catch (err) {
             logger.error(`Error downloading file ${file.filename}`, err);
             cdnPool.release(cdn);
         }
     }
+
+    logger.info("Chunk processing complete... waiting for downloads to finish");
+
+    // Wait for all chunks to finish downloading
+    await Promise.all(downloadingChunks);
 };
 
 export const DownloadClient = async (
@@ -313,11 +398,6 @@ export const DownloadClient = async (
                 files: FileEntry[];
             };
 
-            const totalDownload = parsed.files.reduce(
-                (acc, file) => acc + +file.size,
-                0,
-            );
-
             let totalDownloaded = 0;
 
             const startTime = Date.now();
@@ -326,7 +406,7 @@ export const DownloadClient = async (
                 user,
                 parsed.files,
                 clientPath,
-                (downloaded) => {
+                (downloaded, totalDownload) => {
                     if (isNaN(downloaded)) return;
                     totalDownloaded += downloaded;
                     setDownloadProgress(
