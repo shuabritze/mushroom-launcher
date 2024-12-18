@@ -98,7 +98,8 @@ ipcMain.handle("launch-client", async (_, id) => {
     log_exceptions=false
     hook_outpacket=false
     hook_inpacket=false
-    patch_input_text=true`,
+    patch_input_text=true
+    patch_ugc_musc=true`,
     );
 
     const clientProcess = child_process.spawn(exePath, [], {
