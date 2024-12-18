@@ -99,7 +99,7 @@ ipcMain.handle("launch-client", async (_, id) => {
     hook_outpacket=false
     hook_inpacket=false
     patch_input_text=true
-    patch_ugc_musc=true`,
+    patch_ugc_music=true`,
     );
 
     const clientProcess = child_process.spawn(exePath, [], {
