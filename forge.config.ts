@@ -12,11 +12,14 @@ import * as path from "path";
 const patcherDir = path.join(__dirname, "./src/patcher");
 const patcherFiles = fs.readdirSync(patcherDir);
 
+const downloaderDir = path.join(__dirname, "./src/downloader");
+const downloaderFiles = fs.readdirSync(downloaderDir);
+
 const config: ForgeConfig = {
     packagerConfig: {
         asar: true,
         icon: "./images/icon.ico",
-        extraResource: patcherFiles.map(file => path.join(patcherDir, file)),
+        extraResource: [patcherFiles.map((file) => path.join(patcherDir, file)), downloaderFiles.map((file) => path.join(downloaderDir, file))].flat(),
     },
     rebuildConfig: {},
     makers: [
@@ -43,11 +46,6 @@ const config: ForgeConfig = {
                     entry: "src/preload.ts",
                     config: "vite.preload.config.ts",
                     target: "preload",
-                },
-                {
-                    entry: "src/worker.ts",
-                    config: "vite.worker.config.ts",
-                    target: "main",
                 },
             ],
             renderer: [
