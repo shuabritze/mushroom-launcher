@@ -22,8 +22,12 @@ export type ServerEntry = {
     port: number;
     online: boolean;
     name: string;
+    lastPlayed?: number;
     hidden?: boolean;
+    iconUrl?: string;
 };
+
+import DEFAULT_ICON from "../assets/mushroom.png";
 
 export function RemoveServerDialog({
     server,
@@ -224,6 +228,21 @@ export const ServerList = ({
 
     const refresh = async () => {
         const servers = await window.electron.getServerList();
+
+        // Sort servers by last played
+        servers.sort((a, b) => {
+            if (a.lastPlayed && b.lastPlayed) {
+                return b.lastPlayed - a.lastPlayed;
+            }
+            if (a.lastPlayed && !b.lastPlayed) {
+                return -1;
+            }
+            if (!a.lastPlayed && b.lastPlayed) {
+                return 1;
+            }
+            return 0;
+        });
+
         setServers(servers);
         setSelectedServer(servers[0]);
         onServerSelected(servers[0]);
@@ -282,9 +301,9 @@ export const ServerList = ({
                         >
                             <div className="flex w-full flex-col gap-2">
                                 <div className="flex items-center gap-2">
-                                    <div className="h-8 w-8 rounded-full bg-black/50 drop-shadow-lg">
+                                    <div className="h-8 w-8 rounded-full bg-black/15 drop-shadow-lg">
                                         <img
-                                            src="https://via.placeholder.com/64"
+                                            src={server.iconUrl || DEFAULT_ICON}
                                             alt="Server Icon"
                                             className="h-full w-full object-cover"
                                         />

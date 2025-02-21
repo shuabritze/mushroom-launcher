@@ -110,6 +110,10 @@ ipcMain.handle("launch-client", async (_, id) => {
     // Minimize the client window
     clientProcess.unref();
 
+    // Set the last played time
+    server.lastPlayed = Date.now();
+    SaveConfig();
+
     return [true, "Launched"];
 });
 
