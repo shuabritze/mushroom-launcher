@@ -16,18 +16,25 @@ import { Input } from "../components/ui/input";
 import { useToast } from "../hooks/use-toast";
 import { Checkbox } from "../components/ui/checkbox";
 
+export type ServerModEntry = {
+    id: string;
+    priority?: number;
+};
+
 export type ServerEntry = {
     id: string;
     ip: string;
     port: number;
     online: boolean;
     name: string;
+    mods: ServerModEntry[];
     lastPlayed?: number;
     hidden?: boolean;
     iconUrl?: string;
 };
 
 import DEFAULT_ICON from "../assets/mushroom.png";
+import { ClientPath } from "./ClientPath";
 
 export function RemoveServerDialog({
     server,
@@ -110,7 +117,9 @@ export function AddServerDialog({ refresh }: { refresh: () => void }) {
         if (
             formatted.ip === "" ||
             isNaN(formatted.port) ||
-            formatted.name === ""
+            formatted.name === "" ||
+            formatted.port < 1 ||
+            formatted.port > 65535
         ) {
             setLoading(false);
             return;
@@ -193,7 +202,14 @@ export function AddServerDialog({ refresh }: { refresh: () => void }) {
                         <Label htmlFor="hidden" className="text-right">
                             Hide IP
                         </Label>
-                        <Checkbox id="hidden" checked={hidden} onCheckedChange={(v) => setHidden(typeof v === 'boolean' ? v : false)} className="col-span-3" />
+                        <Checkbox
+                            id="hidden"
+                            checked={hidden}
+                            onCheckedChange={(v) =>
+                                setHidden(typeof v === "boolean" ? v : false)
+                            }
+                            className="col-span-3"
+                        />
                     </div>
                 </div>
                 <DialogFooter>
@@ -216,8 +232,10 @@ export function AddServerDialog({ refresh }: { refresh: () => void }) {
 
 export const ServerList = ({
     onServerSelected,
+    toggleExpandedModList,
 }: {
     onServerSelected: (server: ServerEntry) => void;
+    toggleExpandedModList: (open: boolean) => void;
 }) => {
     const { toast } = useToast();
 
@@ -286,57 +304,87 @@ export const ServerList = ({
     }, [servers]);
 
     return (
-        <div className="mr-4 overflow-hidden pl-4">
+        <div className="flex w-full flex-col gap-1 overflow-hidden">
             <Fade direction="up" duration={500}>
-                <div className="flex h-full w-1/2 flex-col gap-2 overflow-y-auto rounded-tl-md rounded-tr-md bg-black/50 text-center">
-                    <AddServerDialog refresh={refresh} />
-                </div>
-                <div className="flex h-[21.5rem] w-1/2 flex-col gap-2 overflow-y-auto overflow-x-hidden rounded-bl-md rounded-br-md bg-black/50 drop-shadow-md">
-                    {servers.map((server) => (
-                        <div
-                            key={server.id}
-                            onClick={() => handleServerSelected(server)}
-                            onDoubleClick={() => handleServerLaunched(server)}
-                            className={`flex cursor-pointer items-center gap-2 rounded-sm p-2 hover:bg-black/25 ${selectedServer.id === server.id ? "ring-2 ring-inset ring-primary/50" : ""}`}
-                        >
-                            <div className="flex w-full flex-col gap-2">
-                                <div className="flex items-center gap-2">
-                                    <div className="h-8 w-8 rounded-full bg-black/15 drop-shadow-lg">
-                                        <img
-                                            src={server.iconUrl || DEFAULT_ICON}
-                                            alt="Server Icon"
-                                            className="h-full w-full object-cover"
-                                        />
-                                    </div>
-                                    <div className="flex flex-col gap-2">
-                                        <div className="text-ellipsis text-nowrap text-lg font-bold">
-                                            {server.name}
+                <div>
+                    <div className="flex h-full flex-col gap-2 overflow-y-auto rounded-tl-md rounded-tr-md bg-black/50 text-center">
+                        <AddServerDialog refresh={refresh} />
+                    </div>
+                    <div className="flex h-[21.5rem] flex-col gap-2 overflow-y-auto overflow-x-hidden rounded-bl-md rounded-br-md bg-black/50 drop-shadow-md">
+                        {servers.map((server) => (
+                            <div
+                                key={server.id}
+                                onClick={() => handleServerSelected(server)}
+                                onDoubleClick={() =>
+                                    handleServerLaunched(server)
+                                }
+                                className={`flex cursor-pointer items-center gap-2 rounded-sm p-2 hover:bg-black/25 ${selectedServer.id === server.id ? "ring-2 ring-inset ring-primary/50" : ""}`}
+                            >
+                                <div className="flex w-full flex-col gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-8 w-8 rounded-full bg-black/15 drop-shadow-lg">
+                                            <img
+                                                src={
+                                                    server.iconUrl ||
+                                                    DEFAULT_ICON
+                                                }
+                                                alt="Server Icon"
+                                                className={`h-full w-full object-cover ${server.online ? "" : "grayscale"}`}
+                                            />
                                         </div>
-                                        <div className="text-sm text-gray-400">
-                                            {server.hidden
-                                                ? "Private Server"
-                                                : `${server.ip}:${server.port}`}
+                                        <div className="flex flex-col gap-2">
+                                            <div className="text-ellipsis text-nowrap text-lg font-bold">
+                                                {server.name}
+                                            </div>
+                                            <div className="text-sm text-gray-400">
+                                                {server.hidden
+                                                    ? "Private Server"
+                                                    : `${server.ip}:${server.port}`}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div
-                                    className={`h-1 w-full rounded-full ${server.online ? "bg-green-500" : "bg-red-500"}`}
-                                ></div>
-                                <div className="flex justify-between">
                                     <div
-                                        className={`text-xs ${server.online ? "text-green-500" : "text-red-500"}`}
-                                    >
-                                        {server.online ? "Online" : "Offline"}
+                                        className={`h-1 w-full rounded-full ${server.online ? "bg-green-500" : "bg-red-500"}`}
+                                    ></div>
+                                    <div className="flex justify-between">
+                                        <div
+                                            className={`text-xs ${server.online ? "text-green-500" : "text-red-500"}`}
+                                        >
+                                            {server.online
+                                                ? "Online"
+                                                : "Offline"}
+                                        </div>
+                                        <div className="flex select-none gap-3">
+                                            <div
+                                                className="text-xs text-blue-400 hover:text-blue-100"
+                                                onDoubleClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                }}
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handleServerSelected(
+                                                        server,
+                                                    );
+                                                    toggleExpandedModList(true);
+                                                }}
+                                            >
+                                                Edit Mods
+                                            </div>
+                                            <RemoveServerDialog
+                                                server={server}
+                                                refresh={refresh}
+                                            />
+                                        </div>
                                     </div>
-                                    <RemoveServerDialog
-                                        server={server}
-                                        refresh={refresh}
-                                    />
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
+
+                <ClientPath />
             </Fade>
         </div>
     );

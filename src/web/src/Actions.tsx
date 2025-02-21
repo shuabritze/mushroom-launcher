@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../components/ui/button";
 import { Progress } from "../components/ui/progress";
 import { ServerEntry } from "./ServerList";
@@ -13,7 +13,13 @@ const formatTime = (seconds: number) => {
         .padStart(2, "0")}:${secondsLeft.toString().padStart(2, "0")}`;
 };
 
-export function Actions({ selectedServer }: { selectedServer: ServerEntry }) {
+export function Actions({
+    selectedServer,
+    modDownload,
+}: {
+    selectedServer: ServerEntry;
+    modDownload: boolean;
+}) {
     const { toast } = useToast();
 
     const [progress, setProgress] = useState(-1);
@@ -22,7 +28,30 @@ export function Actions({ selectedServer }: { selectedServer: ServerEntry }) {
 
     const [installing, setInstalling] = useState(false);
     const [launching, setLaunching] = useState(false);
-    const [patching, setPatching] = useState(false);
+    const [patched, setPatched] = useState(false);
+
+    useEffect(() => {
+        (async () => {
+            const patched = await window.electron.isClientPatched();
+            setPatched(patched);
+        })();
+    }, []);
+
+    useEffect(() => {
+        if (modDownload) {
+            const modInstallTicker = setInterval(async () => {
+                const progress = await window.electron.getDownloadProgress();
+                const file = await window.electron.getDownloadFile();
+
+                setFile(file);
+                setProgress(progress);
+                if (progress === -1) {
+                    clearInterval(modInstallTicker);
+                    setFile("");
+                }
+            }, 100);
+        }
+    }, [modDownload]);
 
     const handleLaunch = async () => {
         if (!selectedServer) {
@@ -103,40 +132,13 @@ export function Actions({ selectedServer }: { selectedServer: ServerEntry }) {
                 title: "Patched",
                 description: "Added Maple2.dll to client!",
             });
+            setPatched(true);
         }
-    };
-
-    const handleXmlDownload = async () => {
-        setProgress(0);
-        setFile("Xml.m2d");
-        setPatching(true);
-
-        const ticker = setInterval(async () => {
-            const progress = await window.electron.getPatchProgress();
-            setProgress(progress);
-        }, 100);
-
-        const [patched, message] = await window.electron.patchXML();
-        clearInterval(ticker);
-        if (!patched) {
-            toast({
-                title: "Failed to patch",
-                description: message,
-            });
-        } else {
-            toast({
-                title: "Patched",
-                description: "Custom XML files added to client!",
-            });
-        }
-        setProgress(-1);
-        setFile("");
-        setPatching(false);
     };
 
     return (
         <div className="absolute bottom-0 z-20 w-full">
-            <div className="w-1/2 pl-4">
+            <div className="w-full px-4">
                 {progress !== -1 && (
                     <div className="rounded-md bg-black/50 p-2">
                         <div className="flex w-full justify-between">
@@ -164,25 +166,22 @@ export function Actions({ selectedServer }: { selectedServer: ServerEntry }) {
                     </Button>
                 </span>
 
-                <span className="flex w-1/2 items-center justify-center gap-4">
+                <span className="flex w-1/2 items-center justify-center gap-4 px-4">
                     <Button
                         variant="ghost"
+                        className="w-full"
                         onClick={handleInstall}
                         disabled={installing}
                         showSpinner={installing}
                     >
                         Install Client
                     </Button>
-                    <Button variant="ghost" onClick={handlePatch}>
-                        Patch
-                    </Button>
                     <Button
                         variant="ghost"
-                        onClick={handleXmlDownload}
-                        disabled={patching}
-                        showSpinner={patching}
+                        className={`w-full ring-1 ${patched ? "ring-green-300" : "ring-red-300"}`}
+                        onClick={handlePatch}
                     >
-                        Patch XML
+                        {patched ? "Patched!" : "Patch Maple2.dll"}
                     </Button>
                 </span>
             </div>

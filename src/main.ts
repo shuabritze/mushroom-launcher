@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, HandlerDetails, shell } from "electron";
+import { app, BrowserWindow, dialog, shell } from "electron";
 import path from "path";
 import fs from "fs";
 import "dotenv/config";
@@ -21,6 +21,9 @@ updateElectronApp();
 // #endregion
 
 import { checkPort } from "./lib";
+import "./events";
+import { KillDownloadClient } from "./download-client";
+import type { ModEntry } from "./web/src/ModList";
 
 // #region Main Window
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
@@ -65,7 +68,7 @@ const createWindow = () => {
         return { action: "deny" };
     });
 
-    // Load APP_CONFIG
+    // Load APP_CONFIG & Mods
     if (
         fs.existsSync(
             path.join(path.dirname(process.execPath), "../app-config.json"),
@@ -93,6 +96,18 @@ const createWindow = () => {
                         server.online = available;
                     });
                 }
+
+                // Load Mods
+                APP_STATE.mods = [];
+
+                setImmediate(async () => {
+                    const modDir = GetModDirectory();
+                    await ReadMods(modDir);
+                    logger.info(
+                        "Loaded Mods: ",
+                        APP_STATE.mods.map((mod) => mod.name).join(", "),
+                    );
+                });
             },
         );
     }
@@ -119,19 +134,22 @@ app.on("activate", () => {
 
 // #region State
 import type { ServerEntry } from "./web/src/ServerList";
+import { GetModDirectory, ReadMods } from "./mod-download";
 
 export let APP_STATE = {
     servers: [],
     clientPath: "",
+    mods: [],
 } as {
     clientPath: string;
     servers: ServerEntry[];
+    mods: ModEntry[];
 };
 
 export function SaveConfig() {
     fs.writeFileSync(
         path.join(path.dirname(process.execPath), "../app-config.json"),
-        JSON.stringify(APP_STATE),
+        JSON.stringify({ ...APP_STATE, mods: undefined }),
     );
     logger.info(
         "APP_CONFIG saved to disk",
@@ -140,6 +158,3 @@ export function SaveConfig() {
 }
 
 // #endregion
-
-import "./events";
-import { KillDownloadClient } from "./download-client";

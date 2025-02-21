@@ -7,6 +7,8 @@ import { ServerEntry, ServerList } from "./ServerList";
 import { ClientPath } from "./ClientPath";
 import { Actions } from "./Actions";
 import { Toaster } from "../components/ui/toaster";
+import { ModList } from "./ModList";
+import { toast } from "../hooks/use-toast";
 
 function App() {
     const [appVersion, setAppVersion] = useState<string>("1.0.0");
@@ -40,6 +42,29 @@ function App() {
 
     const handleServerSelected = (server: ServerEntry) => {
         setSelectedServer(server);
+    };
+
+    const [expandedModList, setExpandedModList] = useState(false);
+    const toggleExpandedModList = (open: boolean) => {
+        setExpandedModList(open);
+    };
+
+    const [modDownload, setModDownload] = useState(false);
+    const handleModDownload = async (modId: string) => {
+        setModDownload(true);
+        const [downloaded, message] = await window.electron.downloadMod(modId);
+        if (!downloaded) {
+            toast({
+                title: "Failed to download",
+                description: message,
+            });
+        } else {
+            toast({
+                title: "Downloaded",
+                description: message,
+            });
+        }
+        setModDownload(false);
     };
 
     return (
@@ -84,9 +109,28 @@ function App() {
                                 v{appVersion}
                             </a>
                         </h1>
-                        <ServerList onServerSelected={handleServerSelected} />
-                        <ClientPath />
-                        <Actions selectedServer={selectedServer} />
+                        <div className="flex w-full justify-between gap-4 p-4">
+                            <ServerList
+                                onServerSelected={handleServerSelected}
+                                toggleExpandedModList={toggleExpandedModList}
+                            />
+                            {expandedModList ? (
+                                <ModList
+                                    selectedServer={selectedServer}
+                                    toggleExpandedModList={
+                                        toggleExpandedModList
+                                    }
+                                    handleModDownload={handleModDownload}
+                                    modDownload={modDownload}
+                                />
+                            ) : (
+                                <div className="w-full"></div>
+                            )}
+                        </div>
+                        <Actions
+                            selectedServer={selectedServer}
+                            modDownload={modDownload}
+                        />
                     </div>
                 </div>
                 {randCharacter !== -1 && (

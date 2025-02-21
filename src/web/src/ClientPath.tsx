@@ -19,7 +19,7 @@ export function ClientPath() {
 
     return (
         <div
-            className="w-1/2 cursor-pointer pl-4 text-xs"
+            className="w-full cursor-pointer text-xs"
             onClick={handleClientPath}
         >
             <div className="rounded-md bg-black/50 p-2">

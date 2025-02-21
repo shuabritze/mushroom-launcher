@@ -1,6 +1,6 @@
-import { app, dialog, ipcMain } from "electron";
+import { app, dialog, ipcMain, shell } from "electron";
 import { APP_STATE, SaveConfig } from "./main";
-import { checkPort, downloadFile } from "./lib";
+import { checkPort } from "./lib";
 import { PatchDLL } from "./patch-dll";
 import { DownloadClient } from "./download-client";
 
@@ -8,7 +8,8 @@ import logger from "electron-log/main";
 
 import path from "path";
 import fs from "fs";
-import child_process from "child_process";
+import { DownloadMod, GetModDirectory, ReadMods } from "./mod-download";
+import { LaunchClient } from "./launch-client";
 
 ipcMain.handle("get-app-version", () => {
     return app.getVersion();
@@ -43,6 +44,7 @@ ipcMain.handle("add-server", async (_, ip, port, name, hidden) => {
         ip,
         port,
         online: isOnline,
+        mods: [],
         name,
         hidden: hidden || false,
     });
@@ -68,53 +70,7 @@ ipcMain.handle("set-client-path", (_) => {
 });
 
 ipcMain.handle("launch-client", async (_, id) => {
-    const server = APP_STATE.servers.find((server) => server.id === id);
-    if (!server) {
-        return [false, "Server not found"];
-    }
-    const clientPath = APP_STATE.clientPath;
-    if (!clientPath) {
-        return [false, "No Install Location Set"];
-    }
-    const exePath = path.join(clientPath, "x64", "MapleStory2.exe");
-    if (!fs.existsSync(exePath)) {
-        return [false, "Client not found"];
-    }
-    const maple2Path = path.join(clientPath, "x64", "maple2.dll");
-    if (!fs.existsSync(maple2Path)) {
-        return [false, "Maple2.dll not found (Did you run the patcher?)"];
-    }
-
-    // Write to Maple2.ini file with server information
-    const iniPath = path.join(clientPath, "x64", "maple2.ini");
-    fs.writeFileSync(
-        iniPath,
-        `[default]
-    name=${server?.name}
-    host=${server.ip}
-    port=${server.port}
-    banword=true
-    multiclient=true
-    visualizer=false
-    log_exceptions=false
-    hook_outpacket=false
-    hook_inpacket=false
-    patch_input_text=true
-    patch_ugc_music=true`,
-    );
-
-    const clientProcess = child_process.spawn(exePath, [], {
-        detached: true,
-    });
-
-    // Minimize the client window
-    clientProcess.unref();
-
-    // Set the last played time
-    server.lastPlayed = Date.now();
-    SaveConfig();
-
-    return [true, "Launched"];
+    return LaunchClient(id);
 });
 
 const Maple2 = app.isPackaged
@@ -148,13 +104,11 @@ ipcMain.handle("patch-client", async () => {
     return [true, "Patched"];
 });
 
-let patchProgress = -1;
-
-ipcMain.handle("get-patch-progress", async () => {
-    return patchProgress;
+ipcMain.handle("is-client-patched", async () => {
+    return fs.existsSync(path.join(APP_STATE.clientPath, "x64", "Maple2.dll"));
 });
 
-let downloadProgress = -1;
+let downloadProgress = 0;
 let currentFileDownload = "";
 let downloadEta = -1;
 export const setDownloadProgress = (progress: number) => {
@@ -179,80 +133,6 @@ ipcMain.handle("get-download-file", async () => {
 
 ipcMain.handle("get-download-eta", async () => {
     return downloadEta;
-});
-
-ipcMain.handle("patch-xml", async () => {
-    const clientPath = APP_STATE.clientPath;
-    if (!clientPath) {
-        return [false, "No Install Location Set"];
-    }
-    const exePath = path.join(clientPath, "x64", "MapleStory2.exe");
-    if (!fs.existsSync(exePath)) {
-        return [false, "Client not found"];
-    }
-
-    // Copy Xml.m2d and Xml.m2h
-    if (
-        fs.existsSync(path.join(clientPath, "Data", "Xml.m2d")) &&
-        !fs.existsSync(path.join(clientPath, "Data", "Xml.m2d.bak"))
-    ) {
-        fs.copyFileSync(
-            path.join(clientPath, "Data", "Xml.m2d"),
-            path.join(clientPath, "Data", "Xml.m2d.bak"),
-        );
-        fs.copyFileSync(
-            path.join(clientPath, "Data", "Xml.m2h"),
-            path.join(clientPath, "Data", "Xml.m2h.bak"),
-        );
-    }
-
-    const filesToGet = [
-        "aHR0cHM6Ly9naXRodWIuY29tL1ppbnRpeHgvTWFwbGVTdG9yeTItWE1ML3JlbGVhc2VzL2xhdGVzdC9kb3dubG9hZC9YbWwubTJk",
-        "aHR0cHM6Ly9naXRodWIuY29tL1ppbnRpeHgvTWFwbGVTdG9yeTItWE1ML3JlbGVhc2VzL2xhdGVzdC9kb3dubG9hZC9YbWwubTJo",
-        "aHR0cHM6Ly9naXRodWIuY29tL1ppbnRpeHgvTWFwbGVTdG9yeTItWE1ML3JlbGVhc2VzL2xhdGVzdC9kb3dubG9hZC9TZXJ2ZXIubTJk",
-        "aHR0cHM6Ly9naXRodWIuY29tL1ppbnRpeHgvTWFwbGVTdG9yeTItWE1ML3JlbGVhc2VzL2xhdGVzdC9kb3dubG9hZC9TZXJ2ZXIubTJo",
-    ];
-
-    const alterProgress = (progress: number) => {
-        patchProgress = (patchProgress * 3 + progress) / 4;
-    };
-
-    patchProgress = 0;
-    const downloads: Promise<boolean>[] = [];
-    for (const file of filesToGet) {
-        const url = Buffer.from(file, "base64").toString("ascii");
-        const name = path.basename(url);
-        const p = new Promise<boolean>((resolve, reject) => {
-            downloadFile(
-                url,
-                path.join(clientPath, "Data", name),
-                (err) => {
-                    if (err) {
-                        logger.info(err);
-                        resolve(false);
-                    } else {
-                        resolve(true);
-                    }
-                },
-                alterProgress,
-            );
-        });
-
-        downloads.push(p);
-    }
-
-    const results = await Promise.all(downloads);
-
-    patchProgress = -1;
-
-    if (!results.every((result) => result)) {
-        return [
-            false,
-            `One or more downloads failed, please try again ${results.map((result, i) => (result ? "" : "(Download " + i + 1 + " Failed)")).join(", ")}`,
-        ];
-    }
-
-    return [true, "Patched"];
 });
 
 ipcMain.handle("install-client", async () => {
@@ -283,4 +163,80 @@ ipcMain.handle("install-client", async () => {
     }
 
     return [true, `Installed at ${clientPath}`];
+});
+
+ipcMain.handle("get-mod-list", async () => {
+    APP_STATE.mods = [];
+    ReadMods(GetModDirectory());
+
+    return APP_STATE.mods;
+});
+
+ipcMain.handle("download-mod", async (_, id) => {
+    const mod = APP_STATE.mods.find((mod) => mod.id === id);
+    if (!mod) {
+        return [false, "Mod not found"];
+    }
+    return DownloadMod(mod.path, mod);
+});
+
+ipcMain.handle("open-mod-folder", async () => {
+    const modDir = GetModDirectory();
+    if (!fs.existsSync(modDir)) {
+        fs.mkdirSync(modDir);
+
+        fs.mkdirSync(path.join(modDir, "kms2-gms2-merged"));
+        fs.writeFileSync(
+            path.join(modDir, "kms2-gms2-merged", "mod.json"),
+            JSON.stringify({
+                id: "kms2-gms2-merged",
+                name: "KMS2 + GMS2 Merged XML",
+                files: [
+                    {
+                        target: "Xml.m2d",
+                        download: true,
+                        source: "aHR0cHM6Ly9naXRodWIuY29tL1ppbnRpeHgvTWFwbGVTdG9yeTItWE1ML3JlbGVhc2VzL2xhdGVzdC9kb3dubG9hZC9YbWwubTJk",
+                    },
+                    {
+                        target: "Xml.m2h",
+                        download: true,
+                        source: "aHR0cHM6Ly9naXRodWIuY29tL1ppbnRpeHgvTWFwbGVTdG9yeTItWE1ML3JlbGVhc2VzL2xhdGVzdC9kb3dubG9hZC9YbWwubTJo",
+                    },
+                    {
+                        target: "Server.m2d",
+                        download: true,
+                        source: "aHR0cHM6Ly9naXRodWIuY29tL1ppbnRpeHgvTWFwbGVTdG9yeTItWE1ML3JlbGVhc2VzL2xhdGVzdC9kb3dubG9hZC9TZXJ2ZXIubTJk",
+                    },
+                    {
+                        target: "Server.m2h",
+                        download: true,
+                        source: "aHR0cHM6Ly9naXRodWIuY29tL1ppbnRpeHgvTWFwbGVTdG9yeTItWE1ML3JlbGVhc2VzL2xhdGVzdC9kb3dubG9hZC9TZXJ2ZXIubTJo",
+                    },
+                ],
+            }),
+        );
+    }
+
+    shell.openPath(modDir);
+    return true;
+});
+
+ipcMain.handle("get-server-mods", async (_, id) => {
+    const server = APP_STATE.servers.find((server) => server.id === id);
+    if (!server || !server.mods || server.mods.length === 0) {
+        return [];
+    }
+
+    return APP_STATE.mods.filter((mod) =>
+        server.mods?.some((smod) => smod.id === mod.id),
+    );
+});
+
+ipcMain.handle("set-server-mods", async (_, id, mods) => {
+    const server = APP_STATE.servers.find((server) => server.id === id);
+    if (!server) {
+        return false;
+    }
+    server.mods = mods;
+    return true;
 });

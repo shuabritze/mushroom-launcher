@@ -1,8 +1,7 @@
-import { app, dialog, shell } from "electron";
+import { app, shell } from "electron";
 
 import logger from "electron-log/main";
 
-import fs from "fs";
 import path from "path";
 import { setDownloadEta, setDownloadFile, setDownloadProgress } from "./events";
 import { ChildProcessWithoutNullStreams, spawn } from "child_process";
@@ -183,10 +182,11 @@ export const DownloadClient = async (
             }
 
             cb(new Error("Download process exited with code " + code));
-            ActiveDownloadProcess = null;
             resolve();
         });
     });
 
     await p;
+
+    ActiveDownloadProcess = null;
 };

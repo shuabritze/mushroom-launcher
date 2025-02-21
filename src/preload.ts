@@ -1,3 +1,5 @@
+import type { ModEntry } from "./web/src/ModList";
+
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("electron", {
@@ -9,15 +11,21 @@ contextBridge.exposeInMainWorld("electron", {
     removeServer: (id: string) => ipcRenderer.invoke("remove-server", id),
     addServer: (ip: string, port: number, name: string, hidden: boolean) =>
         ipcRenderer.invoke("add-server", ip, port, name, hidden),
+    getServerMods: (id: string) => ipcRenderer.invoke("get-server-mods", id),
+    setServerMods: (id: string, mods: string[]) =>
+        ipcRenderer.invoke("set-server-mods", id, mods),
+
+    getModList: () => ipcRenderer.invoke("get-mod-list"),
+    downloadMod: (id: string) => ipcRenderer.invoke("download-mod", id),
+    openModFolder: () => ipcRenderer.invoke("open-mod-folder"),
 
     getClientPath: () => ipcRenderer.invoke("get-client-path"),
     openClientDialog: () => ipcRenderer.invoke("set-client-path"),
 
     launchClient: (id: string) => ipcRenderer.invoke("launch-client", id),
     installClient: () => ipcRenderer.invoke("install-client"),
+    isClientPatched: () => ipcRenderer.invoke("is-client-patched"),
     patchClient: () => ipcRenderer.invoke("patch-client"),
-    patchXML: () => ipcRenderer.invoke("patch-xml"),
-    getPatchProgress: () => ipcRenderer.invoke("get-patch-progress"),
     getDownloadProgress: () => ipcRenderer.invoke("get-download-progress"),
     getDownloadFile: () => ipcRenderer.invoke("get-download-file"),
     getDownloadEta: () => ipcRenderer.invoke("get-download-eta"),
