@@ -1,4 +1,4 @@
-import { app } from "electron";
+import { app, dialog, shell } from "electron";
 
 import logger from "electron-log/main";
 
@@ -39,12 +39,60 @@ export const KillDownloadClient = () => {
     }
 };
 
+const hasDotnet = () => {
+    return new Promise((resolve, reject) => {
+        const dotnetRuntimesProcess = spawn("dotnet", ["--list-runtimes"]);
+        let runtimeListOutput = "";
+
+        dotnetRuntimesProcess.stdout.on("data", (data) => {
+            runtimeListOutput += data.toString();
+        });
+
+        dotnetRuntimesProcess.on("close", (code) => {
+            if (code !== 0) {
+                reject("Error checking .NET runtimes");
+                return;
+            }
+
+            // Check if any installed runtimes are 9.0 or higher
+            const runtimeLines = runtimeListOutput.trim().split("\n");
+            let hasDotnet9OrHigher = false;
+
+            runtimeLines.forEach((line) => {
+                const runtimeVersion = line.split(" ")[1];
+                if (runtimeVersion) {
+                    const [major, minor] = runtimeVersion
+                        .split(".")
+                        .map(Number);
+                    if (major > 9 || (major === 9 && minor >= 0)) {
+                        hasDotnet9OrHigher = true;
+                    }
+                }
+            });
+
+            if (hasDotnet9OrHigher) {
+                resolve(true);
+            } else {
+                reject();
+            }
+        });
+    });
+};
+
 export const DownloadClient = async (
     clientPath: string,
     cb: (err: Error) => void,
 ) => {
     if (ActiveDownloadProcess) {
         logger.error("Download process already running");
+        return;
+    }
+
+    try {
+        await hasDotnet();
+    } catch (err) {
+        cb(new Error(".NET 9.0+ is not installed"));
+        shell.openExternal("https://dotnet.microsoft.com/en-us/download/dotnet/9.0/runtime?cid=getdotnetcore");
         return;
     }
 
