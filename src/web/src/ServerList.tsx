@@ -14,6 +14,7 @@ import { Spinner } from "../components/ui/spinner";
 import { Label } from "../components/ui/label";
 import { Input } from "../components/ui/input";
 import { useToast } from "../hooks/use-toast";
+import { Checkbox } from "../components/ui/checkbox";
 
 export type ServerEntry = {
     id: string;
@@ -21,6 +22,7 @@ export type ServerEntry = {
     port: number;
     online: boolean;
     name: string;
+    hidden?: boolean;
 };
 
 export function RemoveServerDialog({
@@ -90,6 +92,7 @@ export function AddServerDialog({ refresh }: { refresh: () => void }) {
     const [ip, setIp] = useState("");
     const [port, setPort] = useState("");
     const [name, setName] = useState("");
+    const [hidden, setHidden] = useState(false);
 
     const handleAdd = async () => {
         setLoading(true);
@@ -97,6 +100,7 @@ export function AddServerDialog({ refresh }: { refresh: () => void }) {
             ip: ip.trim().toLocaleLowerCase(),
             port: parseInt(port.trim()),
             name: name.trim(),
+            hidden: hidden || false,
         };
 
         if (
@@ -112,6 +116,7 @@ export function AddServerDialog({ refresh }: { refresh: () => void }) {
             formatted.ip,
             formatted.port,
             formatted.name,
+            formatted.hidden,
         );
         if (added) {
             refresh();
@@ -128,6 +133,7 @@ export function AddServerDialog({ refresh }: { refresh: () => void }) {
                 setIp("");
                 setPort("");
                 setName("");
+                setHidden(false);
             }}
         >
             <DialogTrigger asChild>
@@ -178,6 +184,12 @@ export function AddServerDialog({ refresh }: { refresh: () => void }) {
                             onChange={(e) => setPort(e.target.value)}
                             className="col-span-3"
                         />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="hidden" className="text-right">
+                            Hide IP
+                        </Label>
+                        <Checkbox id="hidden" checked={hidden} onCheckedChange={(v) => setHidden(typeof v === 'boolean' ? v : false)} className="col-span-3" />
                     </div>
                 </div>
                 <DialogFooter>
@@ -282,7 +294,9 @@ export const ServerList = ({
                                             {server.name}
                                         </div>
                                         <div className="text-sm text-gray-400">
-                                            {server.ip}:{server.port}
+                                            {server.hidden
+                                                ? "Private Server"
+                                                : `${server.ip}:${server.port}`}
                                         </div>
                                     </div>
                                 </div>

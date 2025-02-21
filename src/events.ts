@@ -36,7 +36,7 @@ ipcMain.handle("remove-server", (_, id) => {
     return true;
 });
 
-ipcMain.handle("add-server", async (_, ip, port, name) => {
+ipcMain.handle("add-server", async (_, ip, port, name, hidden) => {
     const isOnline = await checkPort(ip, port);
     APP_STATE.servers.push({
         id: Math.random().toString(36).substring(2, 15),
@@ -44,6 +44,7 @@ ipcMain.handle("add-server", async (_, ip, port, name) => {
         port,
         online: isOnline,
         name,
+        hidden: hidden || false,
     });
     SaveConfig();
     return true;

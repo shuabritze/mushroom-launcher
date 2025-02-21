@@ -4,7 +4,7 @@ export interface IElectronAPI {
     getServerList: () => Promise<ServerEntry[]>;
     getOnlineStatus: (id: string) => Promise<boolean>;
     removeServer: (id: string) => Promise<boolean>;
-    addServer: (ip: string, port: number, name: string) => Promise<boolean>;
+    addServer: (ip: string, port: number, name: string, hidden: boolean) => Promise<boolean>;
 
     getClientPath: () => Promise<string>;
     openClientDialog: () => Promise<string | null>;

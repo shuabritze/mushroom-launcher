@@ -1,7 +1,7 @@
 {
     "name": "mushroom-launcher",
     "productName": "Mushroom Launcher",
-    "version": "1.1.8",
+    "version": "1.2.0",
     "description": "Mushhroom Game Launcher",
     "main": ".vite/build/main.js",
     "private": true,
@@ -58,6 +58,7 @@
         "@doctormckay/steam-crypto": "^1.2.0",
         "@electron-forge/publisher-github": "^7.5.0",
         "@emotion/react": "^11.13.3",
+        "@radix-ui/react-checkbox": "^1.1.4",
         "@radix-ui/react-dialog": "^1.1.1",
         "@radix-ui/react-label": "^2.1.0",
         "@radix-ui/react-progress": "^1.1.0",

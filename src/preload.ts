@@ -7,8 +7,8 @@ contextBridge.exposeInMainWorld("electron", {
     getOnlineStatus: (id: string) =>
         ipcRenderer.invoke("get-online-status", id),
     removeServer: (id: string) => ipcRenderer.invoke("remove-server", id),
-    addServer: (ip: string, port: number, name: string) =>
-        ipcRenderer.invoke("add-server", ip, port, name),
+    addServer: (ip: string, port: number, name: string, hidden: boolean) =>
+        ipcRenderer.invoke("add-server", ip, port, name, hidden),
 
     getClientPath: () => ipcRenderer.invoke("get-client-path"),
     openClientDialog: () => ipcRenderer.invoke("set-client-path"),

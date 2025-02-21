@@ -5,7 +5,7 @@ import "dotenv/config";
 
 import logger from "electron-log/main";
 
-app.commandLine.appendSwitch('js-flags', '--max-old-space-size=8192');
+app.commandLine.appendSwitch("js-flags", "--max-old-space-size=8192");
 
 // #region Squirrel Installer
 import ess from "electron-squirrel-startup";
@@ -37,7 +37,7 @@ const createWindow = () => {
         autoHideMenuBar: true,
         webPreferences: {
             preload: path.join(__dirname, "preload.js"),
-            nodeIntegrationInWorker: true
+            nodeIntegrationInWorker: true,
         },
         icon: "./images/icon.ico",
     });
@@ -101,11 +101,13 @@ const createWindow = () => {
 app.on("ready", createWindow);
 
 app.on("window-all-closed", () => {
+    // Save APP_CONFIG to disk
+    SaveConfig();
+    KillDownloadClient();
+
     if (process.platform !== "darwin") {
         app.quit();
     }
-    // Save APP_CONFIG to disk
-    SaveConfig();
 });
 
 app.on("activate", () => {
@@ -140,3 +142,4 @@ export function SaveConfig() {
 // #endregion
 
 import "./events";
+import { KillDownloadClient } from "./download-client";
