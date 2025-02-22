@@ -74,14 +74,23 @@ const createWindow = () => {
         return { action: "deny" };
     });
 
+
+    const appDataPath = app.getPath('userData')
+    // Migrate old config
+    if (fs.existsSync(path.join(path.dirname(process.execPath), "../app-config.json"))) {
+        fs.copyFileSync(path.join(path.dirname(process.execPath), "../app-config.json"), path.join(appDataPath, "app-config.json"));
+        fs.rmSync(path.join(path.dirname(process.execPath), "../app-config.json"));
+        logger.info("Migrated old config to new location: ", path.join(appDataPath, "app-config.json"));
+    }
+
     // Load APP_CONFIG & Mods
     if (
         fs.existsSync(
-            path.join(path.dirname(process.execPath), "../app-config.json"),
+            path.join(appDataPath, "app-config.json"),
         )
     ) {
         fs.readFile(
-            path.join(path.dirname(process.execPath), "../app-config.json"),
+            path.join(appDataPath, "app-config.json"),
             (err, data) => {
                 if (err) {
                     dialog.showMessageBox({
@@ -158,13 +167,14 @@ export let APP_STATE = {
 };
 
 export function SaveConfig() {
+    const appDataPath = app.getPath('userData')
     fs.writeFileSync(
-        path.join(path.dirname(process.execPath), "../app-config.json"),
+        path.join(appDataPath, "app-config.json"),
         JSON.stringify({ ...APP_STATE, mods: undefined }),
     );
     logger.info(
         "APP_CONFIG saved to disk",
-        path.join(path.dirname(process.execPath), "../app-config.json"),
+        path.join(appDataPath, "app-config.json"),
     );
 }
 
