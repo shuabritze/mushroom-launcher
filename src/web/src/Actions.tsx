@@ -3,6 +3,7 @@ import { Button } from "../components/ui/button";
 import { Progress } from "../components/ui/progress";
 import { ServerEntry } from "./ServerList";
 import { useToast } from "../hooks/use-toast";
+import { t } from "i18next";
 
 const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -17,7 +18,7 @@ export function Actions({
     selectedServer,
     modDownload,
 }: {
-    selectedServer: ServerEntry;
+    selectedServer: ServerEntry | null;
     modDownload: boolean;
 }) {
     const { toast } = useToast();
@@ -56,8 +57,14 @@ export function Actions({
     const handleLaunch = async () => {
         if (!selectedServer) {
             toast({
-                title: "No Server Selected",
-                description: "Please select a server to launch",
+                title: t(
+                    "actions.launch.no.server.selected",
+                    "No Server Selected",
+                ),
+                description: t(
+                    "actions.launch.no.server.selected.desc",
+                    "Please select a server to launch",
+                ),
             });
             return;
         }
@@ -67,7 +74,7 @@ export function Actions({
         );
         if (!launched) {
             toast({
-                title: "Failed to launch",
+                title: t("actions.launch.failed", "Failed to launch"),
                 description: message,
             });
         }
@@ -105,12 +112,12 @@ export function Actions({
         clearInterval(ticker);
         if (!installed) {
             toast({
-                title: "Failed to install",
+                title: t("actions.install.failed", "Failed to install"),
                 description: message,
             });
         } else {
             toast({
-                title: "Client Installed",
+                title: t("actions.install.installed", "Client Installed"),
                 description: message,
             });
         }
@@ -124,13 +131,16 @@ export function Actions({
         const [patched, message] = await window.electron.patchClient();
         if (!patched) {
             toast({
-                title: "Failed to patch",
+                title: t("actions.patch.failed", "Failed to patch"),
                 description: message,
             });
         } else {
             toast({
-                title: "Patched",
-                description: "Added Maple2.dll to client!",
+                title: t("actions.patch.patched", "Patched"),
+                description: t(
+                    "actions.patch.added.maple2.dll",
+                    "Added Maple2.dll to client!",
+                ),
             });
             setPatched(true);
         }
@@ -162,7 +172,7 @@ export function Actions({
                         showSpinner={launching}
                         onClick={handleLaunch}
                     >
-                        Launch
+                        {t("actions.launch.launch", "Launch")}
                     </Button>
                 </span>
 
@@ -174,14 +184,16 @@ export function Actions({
                         disabled={installing}
                         showSpinner={installing}
                     >
-                        Install Client
+                        {t("actions.install.install", "Install Client")}
                     </Button>
                     <Button
                         variant="ghost"
                         className={`w-full ring-1 ${patched ? "ring-green-300" : "ring-red-300"}`}
                         onClick={handlePatch}
                     >
-                        {patched ? "Patched!" : "Patch Maple2.dll"}
+                        {patched
+                            ? t("actions.patch.btn.patched", "Patched!")
+                            : t("actions.patch.btn.patch", "Patch Maple2.dll")}
                     </Button>
                 </span>
             </div>

@@ -19,12 +19,16 @@ const config: ForgeConfig = {
     packagerConfig: {
         asar: true,
         icon: "./images/icon.ico",
-        extraResource: [patcherFiles.map((file) => path.join(patcherDir, file)), downloaderFiles.map((file) => path.join(downloaderDir, file))].flat(),
+        extraResource: [
+            patcherFiles.map((file) => path.join(patcherDir, file)),
+            downloaderFiles.map((file) => path.join(downloaderDir, file)),
+            "./src/locales",
+        ].flat(),
     },
     rebuildConfig: {},
     makers: [
         new MakerSquirrel({
-            copyright: "MIT License Copyright © 2024 shuabritze",
+            copyright: "MIT License Copyright © 2025 shuabritze",
             iconUrl:
                 "https://raw.githubusercontent.com/shuabritze/mushroom-launcher/refs/heads/main/images/icon.ico",
             setupIcon: "./images/installericon.ico",

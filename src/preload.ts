@@ -1,5 +1,3 @@
-import type { ModEntry } from "./web/src/ModList";
-
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("electron", {
@@ -21,6 +19,7 @@ contextBridge.exposeInMainWorld("electron", {
 
     getClientPath: () => ipcRenderer.invoke("get-client-path"),
     openClientDialog: () => ipcRenderer.invoke("set-client-path"),
+    openClientFolder: () => ipcRenderer.invoke("open-client-folder"),
 
     launchClient: (id: string) => ipcRenderer.invoke("launch-client", id),
     installClient: () => ipcRenderer.invoke("install-client"),
@@ -29,4 +28,10 @@ contextBridge.exposeInMainWorld("electron", {
     getDownloadProgress: () => ipcRenderer.invoke("get-download-progress"),
     getDownloadFile: () => ipcRenderer.invoke("get-download-file"),
     getDownloadEta: () => ipcRenderer.invoke("get-download-eta"),
+
+    loadTranslation: (lng: string, ns: string) =>
+        ipcRenderer.invoke("load-translation", lng, ns),
+    
+    getAppLanguage: () => ipcRenderer.invoke("get-app-language"),
+    setAppLanguage: (lng: string) => ipcRenderer.invoke("set-app-language", lng),
 });

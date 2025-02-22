@@ -19,6 +19,7 @@ export type ModEntry = {
 
 import DEFAULT_ICON from "../assets/mushroom-mod.png";
 import { ServerEntry } from "./ServerList";
+import { t } from "i18next";
 
 export const ModList = ({
     selectedServer,
@@ -26,7 +27,7 @@ export const ModList = ({
     toggleExpandedModList,
     handleModDownload,
 }: {
-    selectedServer: ServerEntry;
+    selectedServer: ServerEntry | null;
     modDownload: boolean;
     toggleExpandedModList: (open: boolean) => void;
     handleModDownload: (modId: string) => void;
@@ -45,7 +46,7 @@ export const ModList = ({
     }, [modDownload]);
 
     const handleModSelected = async (mod: ModEntry) => {
-        if (!mod.downloaded) {
+        if (!mod.downloaded || !selectedServer) {
             return;
         }
 
@@ -68,8 +69,9 @@ export const ModList = ({
 
     const isModEnabled = (mod: ModEntry) => {
         return (
-            selectedServer.mods?.some((smod) => smod.id === mod.id) &&
-            mod.downloaded
+            (selectedServer?.mods?.some((smod) => smod.id === mod.id) &&
+                mod.downloaded) ??
+            false
         );
     };
 
@@ -82,13 +84,13 @@ export const ModList = ({
                             className="w-full bg-blue-400/50 p-3 text-center text-xs text-white hover:text-blue-200"
                             onClick={() => window.electron.openModFolder()}
                         >
-                            Open Mod Folder
+                            {t("mod.open.folder", "Open Mods Folder")}
                         </button>
                         <button
                             className="w-full bg-red-400/50 p-3 text-center text-xs text-white hover:text-red-200"
                             onClick={() => toggleExpandedModList(false)}
                         >
-                            Close
+                            {t("mod.close", "Close")}
                         </button>
                     </div>
                     <div className="overflow-y-auto">
@@ -135,9 +137,18 @@ export const ModList = ({
                                             >
                                                 {mod.downloaded
                                                     ? isModEnabled(mod)
-                                                        ? "Enabled"
-                                                        : "Disabled"
-                                                    : "Not Downloaded"}
+                                                        ? t(
+                                                              "mod.enabled",
+                                                              "Enabled",
+                                                          )
+                                                        : t(
+                                                              "mod.disabled",
+                                                              "Disabled",
+                                                          )
+                                                    : t(
+                                                          "mod.not.downloaded",
+                                                          "Not Downloaded",
+                                                      )}
                                             </div>
                                             <div>
                                                 <button
@@ -151,8 +162,14 @@ export const ModList = ({
                                                     }}
                                                 >
                                                     {mod.downloaded
-                                                        ? "Update"
-                                                        : "Download"}
+                                                        ? t(
+                                                              "mod.update",
+                                                              "Update",
+                                                          )
+                                                        : t(
+                                                              "mod.download",
+                                                              "Download",
+                                                          )}
                                                 </button>
                                             </div>
                                         </div>

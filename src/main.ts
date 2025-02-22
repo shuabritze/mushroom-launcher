@@ -24,12 +24,18 @@ import { checkPort } from "./lib";
 import "./events";
 import { KillDownloadClient } from "./download-client";
 import type { ModEntry } from "./web/src/ModList";
+import type { ServerEntry } from "./web/src/ServerList";
+import { GetModDirectory, ReadMods } from "./mod-download";
+import { changeLanguage, createI18n } from "./electron-i18n";
+import { t } from "i18next";
 
 // #region Main Window
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
 declare const MAIN_WINDOW_VITE_NAME: string;
 
 const createWindow = () => {
+    createI18n();
+
     // Create the browser window.
     const mainWindow = new BrowserWindow({
         resizable: true,
@@ -81,8 +87,10 @@ const createWindow = () => {
                     dialog.showMessageBox({
                         title: "Mushroom Launcher",
                         type: "warning",
-                        message:
+                        message: t(
+                            "main.load.config.failed",
                             "Could not load APP_CONFIG, your config may be corrupted.\r\n",
+                        ),
                     });
                     return;
                 }
@@ -96,6 +104,10 @@ const createWindow = () => {
                         server.online = available;
                     });
                 }
+
+                // Load Language
+                APP_STATE.language ??= "en";
+                changeLanguage(APP_STATE.language);
 
                 // Load Mods
                 APP_STATE.mods = [];
@@ -133,14 +145,13 @@ app.on("activate", () => {
 // #endregion
 
 // #region State
-import type { ServerEntry } from "./web/src/ServerList";
-import { GetModDirectory, ReadMods } from "./mod-download";
-
 export let APP_STATE = {
+    language: "en",
     servers: [],
     clientPath: "",
     mods: [],
 } as {
+    language: string;
     clientPath: string;
     servers: ServerEntry[];
     mods: ModEntry[];

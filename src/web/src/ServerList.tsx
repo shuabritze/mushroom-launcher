@@ -27,7 +27,7 @@ export type ServerEntry = {
     port: number;
     online: boolean;
     name: string;
-    mods: ServerModEntry[];
+    mods?: ServerModEntry[];
     lastPlayed?: number;
     hidden?: boolean;
     iconUrl?: string;
@@ -35,6 +35,7 @@ export type ServerEntry = {
 
 import DEFAULT_ICON from "../assets/mushroom.png";
 import { ClientPath } from "./ClientPath";
+import { t } from "i18next";
 
 export function RemoveServerDialog({
     server,
@@ -69,16 +70,18 @@ export function RemoveServerDialog({
         >
             <DialogTrigger asChild>
                 <div className="text-xs text-red-400 hover:text-red-100">
-                    Remove
+                    {t("server.remove.remove", "Remove")}
                 </div>
             </DialogTrigger>
             <DialogContent className="flex w-[16rem] flex-col items-center">
                 <DialogHeader>
-                    <DialogTitle>Are you sure?</DialogTitle>
+                    <DialogTitle>
+                        {t("server.remove.confirm", "Are you sure?")}
+                    </DialogTitle>
                 </DialogHeader>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setOpen(false)}>
-                        Cancel
+                        {t("server.remove.cancel", "Cancel")}
                     </Button>
                     <Button
                         variant="destructive"
@@ -87,7 +90,7 @@ export function RemoveServerDialog({
                         type="submit"
                         onClick={handleRemove}
                     >
-                        Delete
+                        {t("server.remove.delete", "Delete")}
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -151,17 +154,19 @@ export function AddServerDialog({ refresh }: { refresh: () => void }) {
         >
             <DialogTrigger asChild>
                 <div className="cursor-pointer p-2 hover:bg-black/25">
-                    + Add Server
+                    {t("server.add.add", "+ Add Server")}
                 </div>
             </DialogTrigger>
             <DialogContent className="flex w-[24rem] flex-col items-center">
                 <DialogHeader>
-                    <DialogTitle>Add server</DialogTitle>
+                    <DialogTitle>
+                        {t("server.add.title", "Add server")}
+                    </DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="name" className="text-right">
-                            Name
+                            {t("server.add.name", "Name")}
                         </Label>
                         <Input
                             id="name"
@@ -173,7 +178,7 @@ export function AddServerDialog({ refresh }: { refresh: () => void }) {
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="ip" className="text-right">
-                            IP
+                            {t("server.add.ip", "IP")}
                         </Label>
                         <Input
                             id="ip"
@@ -185,7 +190,7 @@ export function AddServerDialog({ refresh }: { refresh: () => void }) {
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="port" className="text-right">
-                            Port
+                            {t("server.add.port", "Port")}
                         </Label>
                         <Input
                             id="port"
@@ -200,7 +205,7 @@ export function AddServerDialog({ refresh }: { refresh: () => void }) {
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="hidden" className="text-right">
-                            Hide IP
+                            {t("server.add.hide.ip", "Hide IP")}
                         </Label>
                         <Checkbox
                             id="hidden"
@@ -214,7 +219,7 @@ export function AddServerDialog({ refresh }: { refresh: () => void }) {
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setOpen(false)}>
-                        Cancel
+                        {t("server.add.cancel", "Cancel")}
                     </Button>
                     <Button
                         type="submit"
@@ -222,7 +227,7 @@ export function AddServerDialog({ refresh }: { refresh: () => void }) {
                         disabled={loading}
                         showSpinner={loading}
                     >
-                        Add
+                        {t("server.add.add.confirm", "Add")}
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -278,7 +283,7 @@ export const ServerList = ({
         );
         if (!launched) {
             toast({
-                title: "Failed to launch",
+                title: t("server.launch.failed", "Failed to launch"),
                 description: message,
             });
         }
@@ -318,7 +323,7 @@ export const ServerList = ({
                                 onDoubleClick={() =>
                                     handleServerLaunched(server)
                                 }
-                                className={`flex cursor-pointer items-center gap-2 rounded-sm p-2 hover:bg-black/25 ${selectedServer.id === server.id ? "ring-2 ring-inset ring-primary/50" : ""}`}
+                                className={`flex cursor-pointer items-center gap-2 rounded-sm p-2 ${selectedServer?.id === server.id ? "bg-blue-400/15 ring-2 ring-inset ring-primary/50 hover:bg-blue-400/25" : "hover:bg-black/25"}`}
                             >
                                 <div className="flex w-full flex-col gap-2">
                                     <div className="flex items-center gap-2">
@@ -338,7 +343,10 @@ export const ServerList = ({
                                             </div>
                                             <div className="text-sm text-gray-400">
                                                 {server.hidden
-                                                    ? "Private Server"
+                                                    ? t(
+                                                          "server.hidden.server",
+                                                          "Hidden Server",
+                                                      )
                                                     : `${server.ip}:${server.port}`}
                                             </div>
                                         </div>
@@ -351,8 +359,11 @@ export const ServerList = ({
                                             className={`text-xs ${server.online ? "text-green-500" : "text-red-500"}`}
                                         >
                                             {server.online
-                                                ? "Online"
-                                                : "Offline"}
+                                                ? t("server.online", "Online")
+                                                : t(
+                                                      "server.offline",
+                                                      "Offline",
+                                                  )}
                                         </div>
                                         <div className="flex select-none gap-3">
                                             <div
@@ -370,7 +381,10 @@ export const ServerList = ({
                                                     toggleExpandedModList(true);
                                                 }}
                                             >
-                                                Edit Mods
+                                                {t(
+                                                    "server.edit.mods",
+                                                    "Edit Mods",
+                                                )}
                                             </div>
                                             <RemoveServerDialog
                                                 server={server}

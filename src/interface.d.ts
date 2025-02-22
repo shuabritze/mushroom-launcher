@@ -14,6 +14,7 @@ export interface IElectronAPI {
 
     getClientPath: () => Promise<string>;
     openClientDialog: () => Promise<string | null>;
+    openClientFolder: () => Promise<boolean>;
 
     launchClient: (id: string) => Promise<[boolean, string]>;
     installClient: () => Promise<[boolean, string]>;
@@ -24,6 +25,10 @@ export interface IElectronAPI {
     getDownloadProgress: () => Promise<number>;
     getDownloadFile: () => Promise<string>;
     getDownloadEta: () => Promise<number>;
+
+    loadTranslation: (lng: string, ns: string) => Promise<Record<string, string>>;
+    getAppLanguage: () => Promise<string>;
+    setAppLanguage: (lng: string) => Promise<void>;
 }
 
 declare global {

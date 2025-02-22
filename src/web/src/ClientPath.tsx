@@ -1,4 +1,6 @@
+import { t } from "i18next";
 import { useEffect, useState } from "react";
+import { Trans } from "react-i18next";
 
 export function ClientPath() {
     const [clientUrl, setClientUrl] = useState<string | null>(null);
@@ -24,10 +26,26 @@ export function ClientPath() {
         >
             <div className="rounded-md bg-black/50 p-2">
                 <div className="no-scrollbar overflow-y-auto text-nowrap text-white">
-                    {clientUrl || `No Install Location Set`}
+                    {clientUrl ||
+                        t("client.install.location", "No Install Location Set")}
                 </div>
-                <div className="text-blue-400 underline">
-                    Change Install Location
+                <div className="flex w-full justify-between text-blue-400 underline">
+                    <Trans i18nKey="client.change.install.location">
+                        Change Install Location
+                    </Trans>
+                    {clientUrl && (
+                        <div
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                window.electron.openClientFolder();
+                            }}
+                        >
+                            <Trans i18nKey="client.open.folder">
+                                Open Client Folder
+                            </Trans>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

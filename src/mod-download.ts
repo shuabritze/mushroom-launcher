@@ -7,6 +7,7 @@ import path from "path";
 import logger from "electron-log/main";
 import { app } from "electron";
 import { setDownloadFile, setDownloadProgress } from "./events";
+import { t } from "i18next";
 
 export const GetModDirectory = () => {
     const dir = path.join(
@@ -121,5 +122,10 @@ export const DownloadMod = async (dir: string, mod: ModEntry) => {
     setDownloadProgress(-1);
 
     logger.info("[MODS] Downloaded ", mod.name);
-    return [true, `${mod.name} has been downloaded`];
+    return [
+        true,
+        t("main.download.mod.downloaded", `{{modName}} has been downloaded`, {
+            modName: mod.name,
+        }),
+    ];
 };

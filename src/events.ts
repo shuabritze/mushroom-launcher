@@ -10,6 +10,8 @@ import path from "path";
 import fs from "fs";
 import { DownloadMod, GetModDirectory, ReadMods } from "./mod-download";
 import { LaunchClient } from "./launch-client";
+import { changeLanguage, t } from "i18next";
+import { loadTranslation } from "./electron-i18n";
 
 ipcMain.handle("get-app-version", () => {
     return app.getVersion();
@@ -59,7 +61,10 @@ ipcMain.handle("get-client-path", () => {
 ipcMain.handle("set-client-path", (_) => {
     const result = dialog.showOpenDialogSync({
         properties: ["openDirectory"],
-        title: "Select Install Folder or Existing Folder",
+        title: t(
+            "main.set.client.path.title",
+            "Select Install Folder or Existing Folder",
+        ),
     });
     if (result && result.length > 0) {
         APP_STATE.clientPath = result[0];
@@ -67,6 +72,11 @@ ipcMain.handle("set-client-path", (_) => {
         return APP_STATE.clientPath;
     }
     return null;
+});
+
+ipcMain.handle("open-client-folder", async () => {
+    shell.openPath(APP_STATE.clientPath);
+    return true;
 });
 
 ipcMain.handle("launch-client", async (_, id) => {
@@ -83,16 +93,28 @@ const Maple2Edit = app.isPackaged
 ipcMain.handle("patch-client", async () => {
     const clientPath = APP_STATE.clientPath;
     if (!clientPath) {
-        return [false, "No Install Location Set"];
+        return [
+            false,
+            t(
+                "main.patch.client.no.install.location",
+                "No Install Location Set",
+            ),
+        ];
     }
     const exePath = path.join(clientPath, "x64", "MapleStory2.exe");
     if (!fs.existsSync(exePath)) {
-        return [false, "Client not found"];
+        return [false, t("main.patch.client.not.found", "Client not found")];
     }
 
     const nxCharacter = path.join(clientPath, "x64", "NxCharacter64.dll");
     if (!fs.existsSync(nxCharacter)) {
-        return [false, "NxCharacter64.dll not found"];
+        return [
+            false,
+            t(
+                "main.patch.client.nxcharacter.not.found",
+                "NxCharacter64.dll not found",
+            ),
+        ];
     }
 
     // Copy Maple2.dll to client/x64/Maple2.dll
@@ -138,7 +160,13 @@ ipcMain.handle("get-download-eta", async () => {
 ipcMain.handle("install-client", async () => {
     const clientPath = APP_STATE.clientPath;
     if (!clientPath) {
-        return [false, "No Install Location Set"];
+        return [
+            false,
+            t(
+                "main.install.client.no.install.location",
+                "No Install Location Set",
+            ),
+        ];
     }
 
     logger.info("Downloading client...");
@@ -162,7 +190,12 @@ ipcMain.handle("install-client", async () => {
         return [false, errs.map((err) => err.message).join("\n")];
     }
 
-    return [true, `Installed at ${clientPath}`];
+    return [
+        true,
+        t("main.install.client.installed", "Installed at {{clientPath}}", {
+            clientPath,
+        }),
+    ];
 });
 
 ipcMain.handle("get-mod-list", async () => {
@@ -175,48 +208,13 @@ ipcMain.handle("get-mod-list", async () => {
 ipcMain.handle("download-mod", async (_, id) => {
     const mod = APP_STATE.mods.find((mod) => mod.id === id);
     if (!mod) {
-        return [false, "Mod not found"];
+        return [false, t("main.download.mod.not.found", "Mod not found")];
     }
     return DownloadMod(mod.path, mod);
 });
 
 ipcMain.handle("open-mod-folder", async () => {
     const modDir = GetModDirectory();
-    if (!fs.existsSync(modDir)) {
-        fs.mkdirSync(modDir);
-
-        fs.mkdirSync(path.join(modDir, "kms2-gms2-merged"));
-        fs.writeFileSync(
-            path.join(modDir, "kms2-gms2-merged", "mod.json"),
-            JSON.stringify({
-                id: "kms2-gms2-merged",
-                name: "KMS2 + GMS2 Merged XML",
-                files: [
-                    {
-                        target: "Xml.m2d",
-                        download: true,
-                        source: "aHR0cHM6Ly9naXRodWIuY29tL1ppbnRpeHgvTWFwbGVTdG9yeTItWE1ML3JlbGVhc2VzL2xhdGVzdC9kb3dubG9hZC9YbWwubTJk",
-                    },
-                    {
-                        target: "Xml.m2h",
-                        download: true,
-                        source: "aHR0cHM6Ly9naXRodWIuY29tL1ppbnRpeHgvTWFwbGVTdG9yeTItWE1ML3JlbGVhc2VzL2xhdGVzdC9kb3dubG9hZC9YbWwubTJo",
-                    },
-                    {
-                        target: "Server.m2d",
-                        download: true,
-                        source: "aHR0cHM6Ly9naXRodWIuY29tL1ppbnRpeHgvTWFwbGVTdG9yeTItWE1ML3JlbGVhc2VzL2xhdGVzdC9kb3dubG9hZC9TZXJ2ZXIubTJk",
-                    },
-                    {
-                        target: "Server.m2h",
-                        download: true,
-                        source: "aHR0cHM6Ly9naXRodWIuY29tL1ppbnRpeHgvTWFwbGVTdG9yeTItWE1ML3JlbGVhc2VzL2xhdGVzdC9kb3dubG9hZC9TZXJ2ZXIubTJo",
-                    },
-                ],
-            }),
-        );
-    }
-
     shell.openPath(modDir);
     return true;
 });
@@ -238,5 +236,20 @@ ipcMain.handle("set-server-mods", async (_, id, mods) => {
         return false;
     }
     server.mods = mods;
+    return true;
+});
+
+ipcMain.handle("load-translation", async (_, lng, ns) => {
+    return loadTranslation(lng, ns);
+});
+
+ipcMain.handle("get-app-language", async () => {
+    return APP_STATE.language;
+});
+
+ipcMain.handle("set-app-language", async (_, lng) => {
+    APP_STATE.language = lng;
+    changeLanguage(lng);
+    SaveConfig();
     return true;
 });

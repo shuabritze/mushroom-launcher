@@ -5,6 +5,7 @@ import logger from "electron-log/main";
 import path from "path";
 import { setDownloadEta, setDownloadFile, setDownloadProgress } from "./events";
 import { ChildProcessWithoutNullStreams, spawn } from "child_process";
+import { t } from "i18next";
 
 const APP_ID = 560380;
 const DEPOT_ID = 560381;
@@ -83,26 +84,43 @@ export const DownloadClient = async (
     cb: (err: Error) => void,
 ) => {
     if (ActiveDownloadProcess) {
-        logger.error("Download process already running");
+        logger.error(
+            t("downloader.already.running", "Download process already running"),
+        );
         return;
     }
 
     try {
         await hasDotnet();
     } catch (err) {
-        cb(new Error(".NET 9.0+ is not installed"));
-        shell.openExternal("https://dotnet.microsoft.com/en-us/download/dotnet/9.0/runtime?cid=getdotnetcore");
+        cb(
+            new Error(
+                t(
+                    "downloader.dotnet.not.installed",
+                    ".NET 9.0+ is not installed",
+                ),
+            ),
+        );
+        shell.openExternal(
+            "https://dotnet.microsoft.com/en-us/download/dotnet/9.0/runtime?cid=getdotnetcore",
+        );
         return;
     }
 
     const args = [
         `${DOWNLOADER_EXE}`,
-        `-app`, APP_ID.toString(),
-        `-depot`, DEPOT_ID.toString(),
-        `-depotkeys`, DEPOT_KEY,
-        `-manifest`, MANIFEST_ID,
-        `-manifestfile`, MANIFEST_INFO,
-        `-dir`, clientPath,
+        `-app`,
+        APP_ID.toString(),
+        `-depot`,
+        DEPOT_ID.toString(),
+        `-depotkeys`,
+        DEPOT_KEY,
+        `-manifest`,
+        MANIFEST_ID,
+        `-manifestfile`,
+        MANIFEST_INFO,
+        `-dir`,
+        clientPath,
         `-validate`,
     ];
 
@@ -111,30 +129,35 @@ export const DownloadClient = async (
 
     let startTime = Date.now();
     let lastPercent = 0;
-    let last10PPS = [] as number[];
+    let last10Expected = [] as number[];
 
     const etaInterval = setInterval(() => {
-        if (last10PPS.length < 1) {
+        if (last10Expected.length < 1) {
             // 20~ minutes
             setDownloadEta(1200);
             return;
         }
 
-        // Take the last 10 and calculate the average
-        const average = last10PPS.reduce((a, b) => a + b, 0) / last10PPS.length;
-        const elapsedTime = (Date.now() - startTime) / 1000;
-        const expectedTime = 100 / (average * 100);
+        const average =
+            last10Expected.reduce((a, b) => a + b, 0) / last10Expected.length;
+        const elapsedTime = Date.now() - startTime;
 
-        if (elapsedTime > expectedTime) {
-            // If the elapsed time is greater than the expected time, we are scuffed
-            setDownloadEta(1);
-            return;
-        }
-
-        setDownloadEta(Math.floor(expectedTime - elapsedTime));
+        setDownloadEta(Math.floor(average - elapsedTime));
     }, 1000);
 
     const p = new Promise<void>((resolve, reject) => {
+        if (!ActiveDownloadProcess) {
+            reject(
+                new Error(
+                    t(
+                        "downloader.download.process.not.found",
+                        "Download process not found",
+                    ),
+                ),
+            );
+            return;
+        }
+
         ActiveDownloadProcess.stdout.on("data", (data) => {
             let lines = data.toString().split("\n");
 
@@ -154,12 +177,12 @@ export const DownloadClient = async (
                     let percentDiff = percent - lastPercent;
                     lastPercent = percent;
 
-                    const elapsedTime = (now - startTime) / 1000;
-                    const percentPerSecond = percentDiff / elapsedTime;
+                    const elapsedTime = now - startTime;
+                    const expectedTime = 100 / (percent / elapsedTime);
 
-                    last10PPS.push(percentPerSecond);
-                    while (last10PPS.length > 10) {
-                        last10PPS.shift();
+                    last10Expected.push(expectedTime);
+                    while (last10Expected.length > 10) {
+                        last10Expected.shift();
                     }
                 } else if (line.trim() !== "") {
                     setDownloadFile(line.replace(clientPath, ""));

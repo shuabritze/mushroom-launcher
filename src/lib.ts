@@ -34,7 +34,7 @@ export function checkPort(ip: string, port: number, timeout = 2000) {
 export function downloadFile(
     url: string,
     dest: string,
-    cb?: (err: string | NodeJS.ErrnoException | null) => void,
+    cb?: (err?: string | NodeJS.ErrnoException | null) => void,
     progressCb?: (progress: number) => void,
 ) {
     const file = fs.createWriteStream(dest);
@@ -43,6 +43,11 @@ export function downloadFile(
             if (response.statusCode === 302) {
                 // Redirect
                 file.close();
+
+                if (!response.headers.location) {
+                    return cb && cb(new Error("No redirect location found"));
+                }
+
                 return downloadFile(
                     response.headers.location,
                     dest,
@@ -50,7 +55,10 @@ export function downloadFile(
                     progressCb,
                 );
             }
-            const total = parseInt(response.headers["content-length"], 10);
+            const total = parseInt(
+                response.headers["content-length"] ?? "0",
+                10,
+            );
             let downloaded = 0;
 
             response.pipe(file);
@@ -64,7 +72,9 @@ export function downloadFile(
             });
 
             file.on("finish", function () {
-                file.close(cb);
+                if (cb) {
+                    file.close(cb);
+                }
             });
         })
         .on("error", function (err) {
@@ -72,33 +82,4 @@ export function downloadFile(
             fs.unlink(dest, function () {});
             if (cb) cb(err.message);
         });
-}
-
-export function decompressFile(fileBuffer: Buffer, fileStream: fs.WriteStream) {
-    return new Promise<void>((resolve, reject) => {
-        const worker = new Worker(path.join(__dirname, "./worker.js"), {
-            workerData: fileBuffer,
-        });
-
-        worker.on("message", (message) => {
-            if (message.success) {
-                // Write the decompressed data to the file
-                fileStream.write(message.data, () => {
-                    resolve();
-                });
-            } else {
-                reject(new Error(message.error));
-            }
-        });
-
-        worker.on("error", (err) => {
-            logger.error(err);
-            reject(err);
-        });
-        worker.on("exit", (code) => {
-            if (code !== 0) {
-                reject(new Error(`Worker stopped with exit code ${code}`));
-            }
-        });
-    });
 }
