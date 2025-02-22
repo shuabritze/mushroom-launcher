@@ -13,14 +13,19 @@ export const GetModDirectory = () => {
     const appDataPath = app.getPath("userData");
 
     // Migrate old mods
-    if (fs.existsSync(path.join(path.dirname(process.execPath), "../mods"))) {
-        fs.copyFileSync(
-            path.join(path.dirname(process.execPath), "../mods"),
+    const oldDir = path.join(
+        path.dirname(process.execPath),
+        app.isPackaged ? "../mods" : "../../../mods",
+    );
+    if (fs.existsSync(oldDir)) {
+        // Copy the old mods directory to the new location
+        fs.cpSync(oldDir, path.join(appDataPath, "mods"), { recursive: true });
+        fs.rmSync(oldDir, { recursive: true });
+
+        logger.info(
+            "Migrated old mods to new location: ",
             path.join(appDataPath, "mods"),
         );
-        fs.rmdirSync(path.join(path.dirname(process.execPath), "../mods"));
-
-        logger.info("Migrated old mods to new location: ", path.join(appDataPath, "mods"));
     }
 
     const dir = path.join(appDataPath, "mods");
