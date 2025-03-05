@@ -1,7 +1,7 @@
 {
     "name": "mushroom-launcher",
     "productName": "Mushroom Launcher",
-    "version": "1.2.2",
+    "version": "1.2.3",
     "description": "Mushhroom Game Launcher",
     "main": ".vite/build/main.js",
     "private": true,

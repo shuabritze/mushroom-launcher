@@ -19,7 +19,7 @@ const MANIFEST_INFO = app.isPackaged
     ? path.join(process.resourcesPath, "./560381_3190888022545443868.manifest")
     : path.join(
           __dirname,
-          "../../src/patcher/560381_3190888022545443868.manifest",
+          "../../src/downloader/560381_3190888022545443868.manifest",
       );
 
 const DEPOT_KEY = app.isPackaged
@@ -129,20 +129,17 @@ export const DownloadClient = async (
 
     let startTime = Date.now();
     let lastPercent = 0;
-    let last10Expected = [] as number[];
+    let percentDiffs = [] as { diff: number; time: number }[];
 
     const etaInterval = setInterval(() => {
-        if (last10Expected.length < 1) {
-            // 20~ minutes
-            setDownloadEta(1200);
-            return;
-        }
+        const timeElapsed = Date.now() - startTime;
+        
+        // Calculate the average download speed
+        const averageSpeed = percentDiffs.reduce((acc, curr) => acc + curr.diff, 0) / percentDiffs.length;
 
-        const average =
-            last10Expected.reduce((a, b) => a + b, 0) / last10Expected.length;
-        const elapsedTime = Date.now() - startTime;
+        const timeRemaining = Math.round(100 / averageSpeed);
 
-        setDownloadEta(Math.floor(average - elapsedTime));
+        setDownloadEta(Math.max(Math.round(timeRemaining - timeElapsed / 1000), 0));
     }, 1000);
 
     const p = new Promise<void>((resolve, reject) => {
@@ -172,20 +169,15 @@ export const DownloadClient = async (
 
                     setDownloadFile(line.replace(clientPath, ""));
 
-                    // Calculate ETA
-                    const now = Date.now();
-                    let percentDiff = percent - lastPercent;
+                    const diff = percent - lastPercent;
                     lastPercent = percent;
-
-                    const elapsedTime = now - startTime;
-                    const expectedTime = 100 / (percent / elapsedTime);
-
-                    last10Expected.push(expectedTime);
-                    while (last10Expected.length > 10) {
-                        last10Expected.shift();
-                    }
+                    percentDiffs.push({
+                        diff,
+                        time: Date.now(),
+                    });
                 } else if (line.trim() !== "") {
-                    setDownloadFile(line.replace(clientPath, ""));
+                    // setDoiwnl(line.replace(clientPath, ""));
+                    logger.info(line);
                 }
             }
         });
