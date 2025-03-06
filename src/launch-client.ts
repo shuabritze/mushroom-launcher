@@ -56,7 +56,8 @@ export const LaunchClient = async (id: string) => {
     hook_inpacket=false
     patch_input_text=true
     patch_ugc_music=true
-    hook_cef=true`,
+    hook_cef=true
+    enable_console=${APP_STATE.enableConsole ?? true}`,
     );
 
     // Remove old mod files

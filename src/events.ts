@@ -253,3 +253,12 @@ ipcMain.handle("set-app-language", async (_, lng) => {
     SaveConfig();
     return true;
 });
+
+ipcMain.handle("get-enable-console", async () => {
+    return APP_STATE.enableConsole ?? true;
+});
+
+ipcMain.handle("set-enable-console", async (_, enable) => {
+    APP_STATE.enableConsole = enable;
+    return true;
+});

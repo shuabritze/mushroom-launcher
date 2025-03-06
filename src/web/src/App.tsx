@@ -18,11 +18,15 @@ import {
 } from "../components/ui/select";
 import { t } from "i18next";
 import i18n from "../lib/i18n";
+import { Checkbox } from "../components/ui/checkbox";
+import { Label } from "../components/ui/label";
 
 function App() {
     const [appVersion, setAppVersion] = useState<string>("1.0.0");
     const [appLanguage, setAppLanguage] = useState<string>("en");
-    const [languages, setLanguages] = useState<{ code: string; text: string; }[]>([
+    const [languages, setLanguages] = useState<
+        { code: string; text: string }[]
+    >([
         {
             code: "en",
             text: "English",
@@ -48,6 +52,7 @@ function App() {
             text: "한국어",
         },
     ]);
+    const [enableConsole, setEnableConsole] = useState<boolean>(true);
 
     const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
     const [randCharacter, setRandCharacter] = useState<number>(-1);
@@ -64,6 +69,9 @@ function App() {
             const language = await window.electron.getAppLanguage();
             setAppLanguage(language);
             i18n.changeLanguage(language);
+
+            const enableConsole = await window.electron.getEnableConsole();
+            setEnableConsole(enableConsole);
         })();
 
         const handleMouseMove = (event: MouseEvent) => {
@@ -120,13 +128,30 @@ function App() {
                     <div className="flex h-full w-full flex-col gap-2 text-white">
                         <h1 className="z-10 flex w-full justify-between bg-black/50 p-4 text-[1rem] font-bold drop-shadow-md">
                             <a
-                                className="w-full"
                                 href="https://github.com/shuabritze/mushroom-launcher"
                                 target="_blank"
                             >
                                 Mushroom Launcher
                             </a>
                             <div className="flex h-6 items-center gap-6">
+                                <div className="flex items-center gap-1">
+                                    <Label
+                                        htmlFor="showConsole"
+                                        className="text-right"
+                                    >
+                                        {t("client.show.console", "Console")}
+                                    </Label>
+                                    <Checkbox
+                                        id="showConsole"
+                                        checked={enableConsole}
+                                        onCheckedChange={(v) => {
+                                            setEnableConsole(!!v);
+                                            window.electron.setEnableConsole(
+                                                !!v,
+                                            );
+                                        }}
+                                    />
+                                </div>
                                 <Select
                                     value={appLanguage}
                                     onValueChange={(v) => {
@@ -142,7 +167,10 @@ function App() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {languages.map((lng) => (
-                                            <SelectItem value={lng.code} key={lng.code}>
+                                            <SelectItem
+                                                value={lng.code}
+                                                key={lng.code}
+                                            >
                                                 {lng.text}
                                             </SelectItem>
                                         ))}

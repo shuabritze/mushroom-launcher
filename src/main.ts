@@ -159,11 +159,13 @@ export let APP_STATE = {
     servers: [],
     clientPath: "",
     mods: [],
+    enableConsole: true,
 } as {
     language: string;
     clientPath: string;
     servers: ServerEntry[];
     mods: ModEntry[];
+    enableConsole?: boolean;
 };
 
 export function SaveConfig() {

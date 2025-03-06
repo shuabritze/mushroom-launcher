@@ -29,6 +29,9 @@ export interface IElectronAPI {
     loadTranslation: (lng: string, ns: string) => Promise<Record<string, string>>;
     getAppLanguage: () => Promise<string>;
     setAppLanguage: (lng: string) => Promise<void>;
+
+    getEnableConsole: () => Promise<boolean>;
+    setEnableConsole: (enable: boolean) => Promise<void>;
 }
 
 declare global {

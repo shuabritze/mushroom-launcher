@@ -34,4 +34,7 @@ contextBridge.exposeInMainWorld("electron", {
     
     getAppLanguage: () => ipcRenderer.invoke("get-app-language"),
     setAppLanguage: (lng: string) => ipcRenderer.invoke("set-app-language", lng),
+
+    getEnableConsole: () => ipcRenderer.invoke("get-enable-console"),
+    setEnableConsole: (enable: boolean) => ipcRenderer.invoke("set-enable-console", enable),
 });
