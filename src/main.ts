@@ -1,41 +1,30 @@
-import { app, BrowserWindow, dialog, shell } from "electron";
-import path from "path";
-import fs from "fs";
-import "dotenv/config";
-
-import logger from "electron-log/main";
-
-app.commandLine.appendSwitch("js-flags", "--max-old-space-size=8192");
+import { app, BrowserWindow, shell } from "electron";
+import path from "node:path";
 
 // #region Squirrel Installer
-import ess from "electron-squirrel-startup";
+import started from "electron-squirrel-startup";
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
-if (ess) {
+if (started) {
     app.quit();
 }
 // #endregion
 
 // #region Auto Updater
 import { updateElectronApp } from "update-electron-app";
+import { InitApp } from "./app/app";
+import { SaveConfig } from "./app/config";
+import { KillDownloadClient } from "./app/download-client";
 updateElectronApp();
 // #endregion
 
-import { checkPort } from "./lib";
-import "./events";
-import { KillDownloadClient } from "./download-client";
-import type { ModEntry } from "./web/src/ModList";
-import type { ServerEntry } from "./web/src/ServerList";
-import { GetModDirectory, ReadMods } from "./mod-download";
-import { changeLanguage, createI18n } from "./electron-i18n";
-import { t } from "i18next";
-
-// #region Main Window
-declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
-declare const MAIN_WINDOW_VITE_NAME: string;
+// #region Switches
+app.commandLine.appendSwitch(
+    "disable-features",
+    "HardwareMediaKeyHandling,MediaSessionService",
+);
+// #endregion
 
 const createWindow = () => {
-    createI18n();
-
     // Create the browser window.
     const mainWindow = new BrowserWindow({
         resizable: true,
@@ -44,14 +33,11 @@ const createWindow = () => {
         minWidth: 1024,
         minHeight: 680,
         autoHideMenuBar: true,
+        icon: "./images/icon.ico",
         webPreferences: {
             preload: path.join(__dirname, "preload.js"),
-            nodeIntegrationInWorker: true,
         },
-        icon: "./images/icon.ico",
     });
-
-    mainWindow.removeMenu();
 
     // and load the index.html of the app.
     if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
@@ -66,7 +52,8 @@ const createWindow = () => {
     }
 
     if (process.env.NODE_ENV === "development") {
-        mainWindow.webContents.openDevTools();
+        // Open the DevTools.
+        mainWindow.webContents.openDevTools({ mode: "detach" });
     }
 
     mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -74,70 +61,28 @@ const createWindow = () => {
         return { action: "deny" };
     });
 
+    // Listen for window focus event
+    mainWindow.on("focus", () => {
+        mainWindow.webContents.send("window-focused");
+    });
 
-    const appDataPath = app.getPath('userData')
-    // Migrate old config
-    if (fs.existsSync(path.join(path.dirname(process.execPath), "../app-config.json"))) {
-        fs.copyFileSync(path.join(path.dirname(process.execPath), "../app-config.json"), path.join(appDataPath, "app-config.json"));
-        fs.rmSync(path.join(path.dirname(process.execPath), "../app-config.json"));
-        logger.info("Migrated old config to new location: ", path.join(appDataPath, "app-config.json"));
-    }
+    // Listen for window blur event
+    mainWindow.on("blur", () => {
+        mainWindow.webContents.send("window-blurred");
+    });
 
-    // Load APP_CONFIG & Mods
-    if (
-        fs.existsSync(
-            path.join(appDataPath, "app-config.json"),
-        )
-    ) {
-        fs.readFile(
-            path.join(appDataPath, "app-config.json"),
-            (err, data) => {
-                if (err) {
-                    dialog.showMessageBox({
-                        title: "Mushroom Launcher",
-                        type: "warning",
-                        message: t(
-                            "main.load.config.failed",
-                            "Could not load APP_CONFIG, your config may be corrupted.\r\n",
-                        ),
-                    });
-                    return;
-                }
-                APP_STATE = JSON.parse(data.toString());
-
-                for (const server of APP_STATE.servers) {
-                    checkPort(server.ip, server.port).then((available) => {
-                        logger.info(
-                            `Server ${server.name} is ${available ? "online" : "offline"}`,
-                        );
-                        server.online = available;
-                    });
-                }
-
-                // Load Language
-                APP_STATE.language ??= "en";
-                changeLanguage(APP_STATE.language);
-
-                // Load Mods
-                APP_STATE.mods = [];
-
-                setImmediate(async () => {
-                    const modDir = GetModDirectory();
-                    await ReadMods(modDir);
-                    logger.info(
-                        "Loaded Mods: ",
-                        APP_STATE.mods.map((mod) => mod.name).join(", "),
-                    );
-                });
-            },
-        );
-    }
+    InitApp(mainWindow);
 };
 
+// This method will be called when Electron has finished
+// initialization and is ready to create browser windows.
+// Some APIs can only be used after this event occurs.
 app.on("ready", createWindow);
 
+// Quit when all windows are closed, except on macOS. There, it's common
+// for applications and their menu bar to stay active until the user quits
+// explicitly with Cmd + Q.
 app.on("window-all-closed", () => {
-    // Save APP_CONFIG to disk
     SaveConfig();
     KillDownloadClient();
 
@@ -147,37 +92,9 @@ app.on("window-all-closed", () => {
 });
 
 app.on("activate", () => {
+    // On OS X it's common to re-create a window in the app when the
+    // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) {
         createWindow();
     }
 });
-// #endregion
-
-// #region State
-export let APP_STATE = {
-    language: "en",
-    servers: [],
-    clientPath: "",
-    mods: [],
-    enableConsole: true,
-} as {
-    language: string;
-    clientPath: string;
-    servers: ServerEntry[];
-    mods: ModEntry[];
-    enableConsole?: boolean;
-};
-
-export function SaveConfig() {
-    const appDataPath = app.getPath('userData')
-    fs.writeFileSync(
-        path.join(appDataPath, "app-config.json"),
-        JSON.stringify({ ...APP_STATE, mods: undefined }),
-    );
-    logger.info(
-        "APP_CONFIG saved to disk",
-        path.join(appDataPath, "app-config.json"),
-    );
-}
-
-// #endregion

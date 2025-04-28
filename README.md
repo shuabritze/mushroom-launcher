@@ -12,11 +12,12 @@ Installation:
 7. Select the server by clicking on it then click on Launch
 8. Maple away!
 
-Once you launch a server for the first time, you can skip the launcher by directly running MapleStory2.exe in the x64 folder, as the configuration persists.
-
+# Help! Windows says this is a virus!
+Mushroom Launcher is fully open source, you can build it yourself, however this is just the nature of a program that modifies another program at runtime.
 
 ## 🛫 Dev quick start
 
 1. Clone Repo
-3. Run `yarn install`
-4. Run `yarn start`
+2. Install pnpm
+3. Run `pnpm install`
+4. Run `pnpm start`
