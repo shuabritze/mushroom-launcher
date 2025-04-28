@@ -37,6 +37,8 @@ export const SettingsSheet = () => {
         setAudioEnabled,
         audioVolume,
         setAudioVolume,
+        modDeveloper,
+        setModDeveloper,
     } = useAppState();
 
     const [languages, setLanguages] = useState<
@@ -200,6 +202,30 @@ export const SettingsSheet = () => {
                                     "Adjusts the volume of the background music.",
                                 )}
                             </small>
+                            <Separator />
+                            {/* Mod Developer Switch */}
+                            <div className="flex gap-2">
+                                <Switch
+                                    id="modDeveloper"
+                                    checked={modDeveloper}
+                                    onCheckedChange={(v) => {
+                                        setModDeveloper?.(!!v);
+                                    }}
+                                />
+                                <Label htmlFor="modDeveloper">
+                                    {t(
+                                        "client.settings.modDeveloper",
+                                        "Mod Developer",
+                                    )}
+                                </Label>
+                            </div>
+                            <small>
+                                {t(
+                                    "client.settings.modDeveloper.info",
+                                    "Enables mod developer features such as creating mods and updating local mod files.",
+                                )}
+                            </small>
+                            <Separator />
                         </SheetDescription>
                     </SheetHeader>
                 </SheetContent>

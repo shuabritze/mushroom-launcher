@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { ServerEntry } from "./config";
+import { Mod } from "./mods";
 
 contextBridge.exposeInMainWorld("electron", {
     getAppVersion: () => ipcRenderer.invoke("get-app-version"),
@@ -18,6 +19,8 @@ contextBridge.exposeInMainWorld("electron", {
         ipcRenderer.invoke("set-audio-enabled", enable),
     setAudioVolume: (volume: number) =>
         ipcRenderer.invoke("set-audio-volume", volume),
+    setModDeveloper: (enable: boolean) =>
+        ipcRenderer.invoke("set-mod-developer", enable),
 
     loadTranslation: (lng: string, ns: string) =>
         ipcRenderer.invoke("load-translation", lng, ns),
@@ -46,6 +49,11 @@ contextBridge.exposeInMainWorld("electron", {
     getClientMods: () => ipcRenderer.invoke("get-client-mods"),
     disableMod: (id: string) => ipcRenderer.invoke("disable-mod", id),
     enableMod: (id: string) => ipcRenderer.invoke("enable-mod", id),
+    updateMod: (id: string) => ipcRenderer.invoke("update-mod", id),
+    createMod: (mod: Pick<Mod, "id" | "name" | "updateUrl">) =>
+        ipcRenderer.invoke("create-mod", mod),
+    updateModJson: (id: string) =>
+        ipcRenderer.invoke("update-mod-json-with-local-files", id),
 
     /**
      * Event handlers

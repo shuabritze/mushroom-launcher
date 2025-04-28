@@ -32,6 +32,9 @@ export interface AppStateType {
 
     selectedServer?: ServerEntry | null;
     setSelectedServer?: (server: ServerEntry | null) => void;
+
+    modDeveloper?: boolean;
+    setModDeveloper?: (enable: boolean) => void;
 }
 
 // Create the context
@@ -79,6 +82,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
         window.electron.setAudioVolume(volume);
     }, []);
 
+    const [modDeveloper, _setModDeveloper] = useState<boolean>(false);
+
+    const setModDeveloper = useCallback((enable: boolean) => {
+        _setModDeveloper(enable);
+        window.electron.setModDeveloper(enable);
+    }, []);
+
     useEffect(() => {
         (async () => {
             const appVersion = await window.electron.getAppVersion();
@@ -92,6 +102,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
             i18n.changeLanguage(appConfig.language);
             _setAudioEnabled(appConfig.audioEnabled);
             _setAudioVolume(appConfig.audioVolume);
+            _setModDeveloper(appConfig.modDeveloper ?? false);
         })();
     }, []);
 
@@ -127,6 +138,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
 
                 selectedServer,
                 setSelectedServer,
+
+                modDeveloper,
+                setModDeveloper,
             }}
         >
             {children}
