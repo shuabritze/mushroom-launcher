@@ -66,7 +66,10 @@ export default function CreateModDialog({
                             id="mod-id"
                             value={newModId}
                             onChange={(e) => setNewModId(e.target.value)}
-                            placeholder="unique-mod-id"
+                            placeholder={t(
+                                "mods.idPlaceholder",
+                                "unique-mod-id",
+                            )}
                         />
                     </div>
                     <div>
@@ -77,7 +80,7 @@ export default function CreateModDialog({
                             id="mod-name"
                             value={newModName}
                             onChange={(e) => setNewModName(e.target.value)}
-                            placeholder="My Mod"
+                            placeholder={t("mods.namePlaceholder", "My Mod")}
                         />
                     </div>
                     <div>
@@ -88,7 +91,10 @@ export default function CreateModDialog({
                             id="mod-update-url"
                             value={newModUpdateUrl}
                             onChange={(e) => setNewModUpdateUrl(e.target.value)}
-                            placeholder="https://example.com/ (Use the root URL of the mod repository)"
+                            placeholder={t(
+                                "mods.updateUrlPlaceholder",
+                                "https://example.com/ (Use the root URL of the mod repository)",
+                            )}
                         />
                     </div>
                 </div>

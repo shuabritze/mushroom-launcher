@@ -48,5 +48,20 @@
     "server.list.title": "서버",
     "server.remove.cancel": "취소",
     "server.remove.confirm": "확실합니까?",
-    "server.remove.delete": "삭제"
+    "server.remove.delete": "삭제",
+    "mods.idError": "Mod ID에는 공백이 포함될 수 없습니다",
+    "mods.create": "모드 생성",
+    "mods.id": "모드 ID",
+    "mods.name": "모드 이름",
+    "mods.updateUrl": "업데이트 URL",
+    "common.cancel": "취소",
+    "mods.updating": "업데이트 중...",
+    "mods.update": "업데이트",
+    "mods.actions": "작업",
+    "mods.updateLocal": "로컬 파일 업데이트",
+    "mods.namePlaceholder": "내 모드",
+    "mods.idPlaceholder": "고유-모드-id",
+    "mods.updateUrlPlaceholder": "https://example.com/ (모드 저장소의 루트 URL을 사용하세요)",
+    "client.settings.modDeveloper": "모드 개발자",
+    "client.settings.modDeveloper.info": "모드 생성 및 로컬 모드 파일 업데이트와 같은 모드 개발자 기능을 활성화합니다."
 }

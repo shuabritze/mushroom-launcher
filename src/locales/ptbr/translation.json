@@ -48,5 +48,20 @@
     "server.list.title": "Servidores",
     "server.remove.cancel": "Cancelar",
     "server.remove.confirm": "Tem certeza?",
-    "server.remove.delete": "Excluir"
+    "server.remove.delete": "Excluir",
+    "mods.idError": "O ID do mod não deve conter espaços",
+    "mods.create": "Criar Mod",
+    "mods.id": "ID do Mod",
+    "mods.name": "Nome do Mod",
+    "mods.updateUrl": "URL de Atualização",
+    "common.cancel": "Cancelar",
+    "mods.updating": "Atualizando...",
+    "mods.update": "Atualizar",
+    "mods.actions": "Ações",
+    "mods.updateLocal": "Atualizar Arquivos Locais",
+    "mods.namePlaceholder": "Meu Mod",
+    "mods.idPlaceholder": "id-unico-do-mod",
+    "mods.updateUrlPlaceholder": "https://exemplo.com/ (Use a URL raiz do repositório do mod)",
+    "client.settings.modDeveloper": "Desenvolvedor de Mods",
+    "client.settings.modDeveloper.info": "Ativa recursos de desenvolvedor de mods, como criar mods e atualizar arquivos locais de mods."
 }

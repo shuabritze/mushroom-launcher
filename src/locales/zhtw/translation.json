@@ -48,5 +48,20 @@
     "server.list.title": "伺服器",
     "server.remove.cancel": "取消",
     "server.remove.confirm": "確定嗎？",
-    "server.remove.delete": "刪除"
+    "server.remove.delete": "刪除",
+    "mods.idError": "Mod ID 不應包含空格",
+    "mods.create": "建立模組",
+    "mods.id": "模組 ID",
+    "mods.name": "模組名稱",
+    "mods.updateUrl": "更新網址",
+    "common.cancel": "取消",
+    "mods.updating": "正在更新...",
+    "mods.update": "更新",
+    "mods.actions": "操作",
+    "mods.updateLocal": "更新本地檔案",
+    "mods.namePlaceholder": "我的模組",
+    "mods.idPlaceholder": "唯一模組ID",
+    "mods.updateUrlPlaceholder": "https://example.com/ (請使用模組倉庫的根網址)",
+    "client.settings.modDeveloper": "模組開發者",
+    "client.settings.modDeveloper.info": "啟用模組開發者功能，例如建立模組和更新本地模組檔案。"
 }
