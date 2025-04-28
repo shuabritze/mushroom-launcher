@@ -2,10 +2,12 @@ import { app, ipcMain } from "electron";
 import * as child_process from "child_process";
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 
 import { APP_CONFIG, SaveConfig } from "./config";
 import { t } from "i18next";
 import { APP_DATA_PATH } from "./app";
+import logger from "electron-log/main";
 
 const AgarciumClient = app.isPackaged
     ? path.join(process.resourcesPath, "./AgarciumClient.dll")
@@ -14,6 +16,53 @@ const AgarciumClient = app.isPackaged
 const NxCharacterProxy = app.isPackaged
     ? path.join(process.resourcesPath, "./NxCharacter64.dll")
     : path.join(__dirname, "../../src/patcher/NxCharacter64.dll");
+
+// https://stackoverflow.com/questions/18658612/obtaining-the-hash-of-a-file-using-the-stream-capabilities-of-crypto-module-ie
+function checksumFile(hashName: any, path: string) {
+    return new Promise((resolve, reject) => {
+        const hash = crypto.createHash(hashName);
+        const stream = fs.createReadStream(path);
+        stream.on('error', err => reject(err));
+        stream.on('data', chunk => hash.update(chunk));
+        stream.on('end', () => resolve(hash.digest('hex')));
+    });
+}
+
+const copyOrUpdateNxCharacter = async () => {
+    const existingPath = path.join(APP_CONFIG.clientPath, "x64", "NxCharacter64.dll");
+    // Check existing nxcharacter size
+    const existingHash = await checksumFile("sha256", existingPath);
+    const newHash = await checksumFile("sha256", NxCharacterProxy);
+
+    logger.info("NxCharacter64 Existing hash: " + existingHash);
+    logger.info("NxCharacter64 New hash: " + newHash);
+
+    if (existingHash !== newHash) {
+        // Copy the new one
+        fs.copyFileSync(
+            NxCharacterProxy,
+            existingPath,
+        );
+    }
+}
+
+const copyOrUpdateAgarciumClient = async () => {
+    const existingPath = path.join(APP_CONFIG.clientPath, "x64", "AgarciumClient.dll");
+    // Check existing agarciumclient size
+    const existingHash = await checksumFile("sha256", existingPath);
+    const newHash = await checksumFile("sha256", AgarciumClient);
+
+    logger.info("AgarciumClient Existing hash: " + existingHash);
+    logger.info("AgarciumClient New hash: " + newHash);
+
+    if (existingHash !== newHash) {
+        // Copy the new one
+        fs.copyFileSync(
+            AgarciumClient,
+            existingPath,
+        );
+    }
+}
 
 ipcMain.handle("launch-client", async (_, serverId) => {
     const server = APP_CONFIG.servers.find((server) => server.id === serverId);
@@ -40,14 +89,8 @@ ipcMain.handle("launch-client", async (_, serverId) => {
         );
     }
 
-    fs.copyFileSync(
-        AgarciumClient,
-        path.join(clientPath, "x64", "AgarciumClient.dll"),
-    );
-    fs.copyFileSync(
-        NxCharacterProxy,
-        path.join(clientPath, "x64", "NxCharacter64.dll"),
-    );
+    await copyOrUpdateAgarciumClient();
+    await copyOrUpdateNxCharacter();
 
     const args = [
         "--nxapp=nxl",
