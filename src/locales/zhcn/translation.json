@@ -48,5 +48,20 @@
     "server.list.title": "服务器",
     "server.remove.cancel": "取消",
     "server.remove.confirm": "确定吗？",
-    "server.remove.delete": "删除"
+    "server.remove.delete": "删除",
+    "mods.idError": "Mod ID不应包含空格",
+    "mods.create": "创建模组",
+    "mods.id": "模组ID",
+    "mods.name": "模组名称",
+    "mods.updateUrl": "更新URL",
+    "common.cancel": "取消",
+    "mods.updating": "正在更新...",
+    "mods.update": "更新",
+    "mods.actions": "操作",
+    "mods.updateLocal": "更新本地文件",
+    "mods.namePlaceholder": "我的模组",
+    "mods.idPlaceholder": "unique-mod-id",
+    "mods.updateUrlPlaceholder": "https://example.com/ (使用模组仓库的根URL)",
+    "client.settings.modDeveloper": "模组开发者",
+    "client.settings.modDeveloper.info": "启用模组开发者功能，如创建模组和更新本地模组文件。"
 }

@@ -32,6 +32,7 @@ export const APP_CONFIG = {
 
     audioEnabled: false,
     audioVolume: 25,
+    modDeveloper: false,
 };
 
 export type AppConfig = typeof APP_CONFIG;
@@ -127,4 +128,9 @@ ipcMain.handle("set-audio-enabled", (event, enable: boolean) => {
 ipcMain.handle("set-audio-volume", (event, volume: number) => {
     logger.info("[IPC] set-audio-volume", volume);
     APP_CONFIG.audioVolume = volume;
+});
+
+ipcMain.handle("set-mod-developer", (event, enable: boolean) => {
+    logger.info("[IPC] set-mod-developer", enable);
+    APP_CONFIG.modDeveloper = enable;
 });

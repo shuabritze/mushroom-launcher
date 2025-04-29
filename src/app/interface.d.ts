@@ -12,6 +12,7 @@ export interface IElectronAPI {
     setAutoLogin: (enable: boolean) => Promise<void>;
     setAudioEnabled: (enable: boolean) => Promise<void>;
     setAudioVolume: (volume: number) => Promise<void>;
+    setModDeveloper: (enable: boolean) => Promise<void>;
 
     loadTranslation: (
         lng: string,
@@ -37,6 +38,11 @@ export interface IElectronAPI {
     getClientMods: () => Promise<ModEntry[]>;
     disableMod: (id: string) => Promise<boolean>;
     enableMod: (id: string) => Promise<boolean>;
+    updateMod: (id: string) => Promise<boolean>;
+    createMod: (
+        mod: Pick<Mod, "id" | "name" | "updateUrl">,
+    ) => Promise<[boolean, string]>;
+    updateModJson: (id: string) => Promise<boolean>;
 
     /**
      * Event handlers

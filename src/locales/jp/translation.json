@@ -48,5 +48,20 @@
     "server.list.title": "サーバー",
     "server.remove.cancel": "キャンセル",
     "server.remove.confirm": "よろしいですか？",
-    "server.remove.delete": "削除"
+    "server.remove.delete": "削除",
+    "mods.idError": "Mod IDにスペースを含めないでください",
+    "mods.create": "Modを作成",
+    "mods.id": "Mod ID",
+    "mods.name": "Mod名",
+    "mods.updateUrl": "アップデートURL",
+    "common.cancel": "キャンセル",
+    "mods.updating": "更新中...",
+    "mods.update": "更新",
+    "mods.actions": "操作",
+    "mods.updateLocal": "ローカルファイルを更新",
+    "mods.namePlaceholder": "マイMod",
+    "mods.idPlaceholder": "unique-mod-id",
+    "mods.updateUrlPlaceholder": "https://example.com/ (ModリポジトリのルートURLを使用してください)",
+    "client.settings.modDeveloper": "Mod開発者",
+    "client.settings.modDeveloper.info": "Modの作成やローカルModファイルの更新など、Mod開発者向け機能を有効にします。"
 }
