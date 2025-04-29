@@ -15,6 +15,19 @@ Installation:
 # Help! Windows says this is a virus!
 Mushroom Launcher is fully open source, you can build it yourself, however this is just the nature of a program that modifies another program at runtime.
 
+## Mod Creation
+- Enable "Mod Developer" mode
+- Click "Create Mod" in the mods tab
+- Enter ID, Name, and a URL (doesn't need to exist yet)
+- Browse to the mod folder after creation
+- Add replacement files (Currently only XML under /Data/Xml)
+- For example to replace stringcommon.xml
+-         /mods/<modId>/Data/Xml/string/stringcommon.xml
+
+- After adding files click "Add Local Files"
+- Upload the mod folder to the URL, ensure that the mod isn't disabled.
+- The launcher will hash check each file and ensure that it only downloads changed mod files on update.
+
 ## 🛫 Dev quick start
 
 1. Clone Repo
