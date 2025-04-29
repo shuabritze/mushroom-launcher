@@ -19,6 +19,10 @@ const NxCharacterProxy = app.isPackaged
 
 // https://stackoverflow.com/questions/18658612/obtaining-the-hash-of-a-file-using-the-stream-capabilities-of-crypto-module-ie
 function checksumFile(hashName: any, path: string) {
+    if (!fs.existsSync(path)) {
+        return "00000000000000000000000000000000";
+    }
+
     return new Promise((resolve, reject) => {
         const hash = crypto.createHash(hashName);
         const stream = fs.createReadStream(path);

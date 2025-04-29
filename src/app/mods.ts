@@ -51,10 +51,16 @@ function collectModFiles(dir: string, base = ""): string[] {
 }
 
 export const GetMods = () => {
+    const modsPath = GetModsPath();
+
+    if (!fs.existsSync(modsPath)) {
+        fs.mkdirSync(modsPath, { recursive: true });
+    }
+
     return fs
-        .readdirSync(GetModsPath())
+        .readdirSync(modsPath)
         .map((mod) => {
-            const modPath = path.join(GetModsPath(), mod);
+            const modPath = path.join(modsPath, mod);
             if (!fs.statSync(modPath).isDirectory()) {
                 return null;
             }
