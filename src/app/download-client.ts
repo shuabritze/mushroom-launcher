@@ -4,7 +4,7 @@ import { app, shell } from "electron";
 import path from "path";
 import fs from "fs";
 import axios from "axios";
-import MultiStream from "multistream";
+import MultiStream, { FactoryStream, PassThrough } from "multistream";
 import unzipper from "unzipper";
 
 import logger from "electron-log/main";
@@ -18,6 +18,7 @@ import { pipeline } from "stream/promises";
 
 let downloadProgress = 0;
 let currentFileDownload = "";
+let downloadFileName = "";
 let downloadEta = -1;
 
 ipcMain.handle("get-download-progress", async () => {
@@ -64,7 +65,7 @@ ipcMain.handle("download-client", async (_, provider) => {
                 await GithubClient(APP_CONFIG.clientPath, (err) => {
                     if (err) {
                         logger.error(err);
-                        reject(err);
+                        resolve();
                         return;
                     }
                     resolve();
@@ -115,9 +116,9 @@ const DOWNLOADER_EXE = app.isPackaged
 const MANIFEST_INFO = app.isPackaged
     ? path.join(process.resourcesPath, "./560381_3190888022545443868.manifest")
     : path.join(
-          __dirname,
-          "../../src/downloader/560381_3190888022545443868.manifest",
-      );
+        __dirname,
+        "../../src/downloader/560381_3190888022545443868.manifest",
+    );
 
 const DEPOT_KEY = app.isPackaged
     ? path.join(process.resourcesPath, "./depot.key")
@@ -345,96 +346,126 @@ const GithubClient = async (clientPath: string, cb: (err: Error) => void) => {
         fs.mkdirSync(clientPath, { recursive: true });
     }
 
-    const chunkResponses = [] as axios.AxiosResponse<Readable, any>[];
-
+    const chunkReqs: any[] = [];
+    let totalLength = 0;
+    // Get total download size
     for (const chunk of GITHUB_CHUNKS) {
-        currentFileDownload = `Fetching ${chunk.fileName}...`;
-
-        const downloadResponse = await axios<Readable>({
+        const res = await axios({
+            method: "HEAD",
             url: chunk.url,
-            method: "GET",
-            responseType: "stream",
-            headers: {
-                Accept: "application/octet-stream",
-            },
-        });
+        })
 
-        if (downloadResponse.status !== 200) {
-            logger.error(
-                `Error downloading ${chunk.fileName}: ${downloadResponse.status} ${downloadResponse.statusText}`,
-            );
-            cb(new Error("Error downloading " + chunk.fileName));
+        const contentLength = res.headers["content-length"];
+        if (contentLength) {
+            totalLength += parseInt(contentLength, 10);
+        }
+
+        // chunk the downloads
+        const chunkSize = 256 * 1024 * 1024; // 256mb
+        const chunkCount = Math.ceil(contentLength / chunkSize);
+
+
+        for (let i = 0; i < chunkCount; i++) {
+            const start = i * chunkSize;
+            const end = Math.min(start + chunkSize - 1, contentLength - 1);
+            const rangeHeader = `bytes=${start}-${end}`;
+            chunkReqs.push({
+                url: chunk.url,
+                headers: {
+                    "Accept": "application/octet-stream",
+                    "Range": rangeHeader,
+                },
+                start,
+                end,
+            });
+        }
+    }
+
+    let chunkIdx = 0;
+    const resFactory: FactoryStream = async (callback: (arg0: Error, arg1: Readable) => void) => {
+        if (chunkIdx >= chunkReqs.length) {
+            // all done
+            callback(null, null);
             return;
         }
 
-        chunkResponses.push(downloadResponse);
-    }
+        const req = chunkReqs[chunkIdx];
+        chunkIdx++;
+        try {
+            const res = await axios({
+                method: "GET",
+                url: req.url,
+                headers: req.headers,
+                responseType: "stream",
+                timeout: 60 * 60 * 1000, // 1 hour
+            });
 
-    const totalLength = chunkResponses.reduce((acc, chunk) => {
-        const contentLength = chunk.headers["content-length"];
-        if (contentLength) {
-            return acc + parseInt(contentLength, 10);
-        }
-        return acc;
-    }, 0);
-    let unpackedBytes = 0;
-
-    const ms = new MultiStream(
-        GITHUB_CHUNKS.map((chunk, idx) => {
-            const response = chunkResponses[idx];
-            if (!response) {
-                throw new Error(`Response not found for ${chunk.fileName}`);
+            if (res.status !== 206) {
+                logger.error(
+                    `Error downloading ${req.url}: ${res.status} ${res.statusText}`,
+                );
+                callback(new Error("Error downloading " + req.url), null);
+                return;
             }
 
-            // pipe the resposne to the multi stream as a reader
-            return response.data;
-        }),
-    );
+            logger.info("Downloading chunk", req.url, res.status, req.headers);
 
-    ms.on("error", (err) => {
-        logger.error("Error in multi stream", err);
-        cb(err);
+            callback(null, res.data);
+        } catch (err) {
+            logger.error("Error downloading chunk", err);
+            callback(err, null);
+        }
+    }
+
+    const ms = new MultiStream(resFactory);
+
+    // 1gb buffer
+    const databuffer = new PassThrough({ highWaterMark: 1024 * 1024 * 1024 });
+
+    ms.pipe(databuffer);
+
+    let unpackedBytes = 0;
+    databuffer.on("data", (data) => {
+        unpackedBytes += data.length;
+        downloadProgress = (
+            (unpackedBytes / totalLength) * 100
+        );
+
+        currentFileDownload = `${downloadProgress.toFixed(2)}% ${downloadFileName}`;
     });
 
-    await new Promise<void>((resolve, reject) => {
-        ms.pipe(unzipper.Parse({}))
-            .on("entry", (entry) => {
-                unpackedBytes += entry.vars.compressedSize;
-                downloadProgress = Math.round(
-                    (unpackedBytes / totalLength) * 100,
-                );
-                currentFileDownload = `${downloadProgress}% ${entry.path}`;
+    const unzipStream = unzipper.Parse({ concurrency: 6 });
+    unzipStream.on("entry", (entry: unzipper.Entry) => {
+        downloadFileName = entry.path;
 
-                if (entry.type === "Directory") {
-                    // if entry is a directory, create it
-                    fs.mkdirSync(path.join(clientPath, entry.path), {
-                        recursive: true,
-                    });
-                    entry.autodrain();
-                    return;
-                }
-
-                // create parent directory if it doesn't exist
-                const parentDir = path.join(
-                    clientPath,
-                    path.dirname(entry.path),
-                );
-                if (!fs.existsSync(parentDir)) {
-                    fs.mkdirSync(parentDir, { recursive: true });
-                }
-
-                // write file
-                entry.pipe(
-                    fs.createWriteStream(path.join(clientPath, entry.path)),
-                );
-            })
-            .on("close", () => {
-                logger.info("Unzipped files to", clientPath);
-                resolve();
-            })
-            .on("error", (err) => {
-                logger.error("Error unzipping files", err);
-                reject(err);
+        if (entry.type === "Directory") {
+            // if entry is a directory, create it
+            fs.mkdirSync(path.join(clientPath, entry.path), {
+                recursive: true,
             });
-    });
+            entry.autodrain();
+            return;
+        }
+
+        // create parent directory if it doesn't exist
+        const parentDir = path.join(
+            clientPath,
+            path.dirname(entry.path),
+        );
+        if (!fs.existsSync(parentDir)) {
+            fs.mkdirSync(parentDir, { recursive: true });
+        }
+
+        // write file
+        const ws = fs.createWriteStream(path.join(clientPath, entry.path));
+        entry.pipe(ws);
+    })
+        .on("close", () => {
+            logger.info("Unzipped files to", clientPath);
+        })
+        .on("error", (err) => {
+            logger.error("Error unzipping files", err);
+        });
+
+    await pipeline(databuffer, unzipStream);
 };
