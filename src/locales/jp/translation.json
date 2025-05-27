@@ -29,6 +29,7 @@
     "downloader.download.process.not.found": "ダウンロードプロセスが見つかりません",
     "main.launch.client.launched": "起動しました",
     "main.launch.client.not.found": "クライアントが見つかりません",
+    "main.launch.client.error": "クライアントの起動中にエラーが発生しました",
     "main.set.client.path.title": "インストールフォルダまたは既存のフォルダを選択",
     "mods.disable": "無効化",
     "mods.enable": "有効化",

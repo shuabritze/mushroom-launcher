@@ -33,6 +33,7 @@ export interface IElectronAPI {
     addServer: (entry: Partial<ServerEntry>) => Promise<boolean>;
     editServer: (entry: Partial<ServerEntry>) => Promise<boolean>;
 
+    preLaunchChecks: (serverId: string) => Promise<[boolean, string]>;
     launchClient: (serverId: string) => Promise<[boolean, string]>;
 
     getClientMods: () => Promise<ModEntry[]>;

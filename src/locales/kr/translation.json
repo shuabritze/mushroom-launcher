@@ -29,6 +29,7 @@
     "downloader.download.process.not.found": "다운로드 프로세스를 찾을 수 없습니다",
     "main.launch.client.launched": "실행됨",
     "main.launch.client.not.found": "클라이언트를 찾을 수 없습니다",
+    "main.launch.client.error": "클라이언트 실행 중 오류 발생",
     "main.set.client.path.title": "설치 폴더 또는 기존 폴더 선택",
     "mods.disable": "비활성화",
     "mods.enable": "활성화",
