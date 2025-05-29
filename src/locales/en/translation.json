@@ -29,6 +29,7 @@
     "downloader.download.process.not.found": "Download process not found",
     "main.launch.client.launched": "Launched",
     "main.launch.client.not.found": "Client not found",
+    "main.launch.client.error": "Error launching client",
     "main.set.client.path.title": "Select Install Folder or Existing Folder",
     "mods.disable": "Disable",
     "mods.enable": "Enable",

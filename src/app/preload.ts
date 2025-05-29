@@ -43,6 +43,8 @@ contextBridge.exposeInMainWorld("electron", {
     editServer: (entry: Partial<ServerEntry>) =>
         ipcRenderer.invoke("edit-server", entry),
 
+    preLaunchChecks: (serverId: string) =>
+        ipcRenderer.invoke("pre-launch-checks", serverId),
     launchClient: (serverId: string) =>
         ipcRenderer.invoke("launch-client", serverId),
 

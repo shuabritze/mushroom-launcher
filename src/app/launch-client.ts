@@ -26,14 +26,18 @@ function checksumFile(hashName: any, path: string) {
     return new Promise((resolve, reject) => {
         const hash = crypto.createHash(hashName);
         const stream = fs.createReadStream(path);
-        stream.on('error', err => reject(err));
-        stream.on('data', chunk => hash.update(chunk));
-        stream.on('end', () => resolve(hash.digest('hex')));
+        stream.on("error", (err) => reject(err));
+        stream.on("data", (chunk) => hash.update(chunk));
+        stream.on("end", () => resolve(hash.digest("hex")));
     });
 }
 
 const copyOrUpdateNxCharacter = async () => {
-    const existingPath = path.join(APP_CONFIG.clientPath, "x64", "NxCharacter64.dll");
+    const existingPath = path.join(
+        APP_CONFIG.clientPath,
+        "x64",
+        "NxCharacter64.dll",
+    );
     // Check existing nxcharacter size
     const existingHash = await checksumFile("sha256", existingPath);
     const newHash = await checksumFile("sha256", NxCharacterProxy);
@@ -43,15 +47,16 @@ const copyOrUpdateNxCharacter = async () => {
 
     if (existingHash !== newHash) {
         // Copy the new one
-        fs.copyFileSync(
-            NxCharacterProxy,
-            existingPath,
-        );
+        fs.copyFileSync(NxCharacterProxy, existingPath);
     }
-}
+};
 
 const copyOrUpdateAgarciumClient = async () => {
-    const existingPath = path.join(APP_CONFIG.clientPath, "x64", "AgarciumClient.dll");
+    const existingPath = path.join(
+        APP_CONFIG.clientPath,
+        "x64",
+        "AgarciumClient.dll",
+    );
     // Check existing agarciumclient size
     const existingHash = await checksumFile("sha256", existingPath);
     const newHash = await checksumFile("sha256", AgarciumClient);
@@ -61,14 +66,11 @@ const copyOrUpdateAgarciumClient = async () => {
 
     if (existingHash !== newHash) {
         // Copy the new one
-        fs.copyFileSync(
-            AgarciumClient,
-            existingPath,
-        );
+        fs.copyFileSync(AgarciumClient, existingPath);
     }
-}
+};
 
-ipcMain.handle("launch-client", async (_, serverId) => {
+ipcMain.handle("pre-launch-checks", async (_, serverId) => {
     const server = APP_CONFIG.servers.find((server) => server.id === serverId);
     if (!server) {
         return [false, "Server not found"];
@@ -77,7 +79,6 @@ ipcMain.handle("launch-client", async (_, serverId) => {
         return [false, "Client path not set"];
     }
     const clientPath = APP_CONFIG.clientPath;
-    const modsPath = path.join(APP_DATA_PATH, "mods");
 
     const exePath = path.join(clientPath, "x64", "MapleStory2.exe");
     if (!fs.existsSync(exePath)) {
@@ -96,6 +97,15 @@ ipcMain.handle("launch-client", async (_, serverId) => {
     await copyOrUpdateAgarciumClient();
     await copyOrUpdateNxCharacter();
 
+    return [true, "Ok"];
+});
+
+ipcMain.handle("launch-client", async (_, serverId) => {
+    const server = APP_CONFIG.servers.find((server) => server.id === serverId);
+    const clientPath = APP_CONFIG.clientPath;
+    const modsPath = path.join(APP_DATA_PATH, "mods");
+    const exePath = path.join(clientPath, "x64", "MapleStory2.exe");
+
     const args = [
         "--nxapp=nxl",
         server.auth && server.auth.username
@@ -113,12 +123,17 @@ ipcMain.handle("launch-client", async (_, serverId) => {
         `--mods=${modsPath}`,
     ];
 
-    const clientProcess = child_process.spawn(exePath, args, {
-        detached: true,
-    });
+    try {
+        const clientProcess = child_process.spawn(exePath, args, {
+            detached: true,
+        });
 
-    // Minimize the client window
-    clientProcess.unref();
+        // Minimize the client window
+        clientProcess.unref();
+    } catch (error) {
+        logger.error("Failed to launch client:", error);
+        return [false, t("main.launch.client.error", "Error launching client")];
+    }
 
     // Set the last played time
     server.lastPlayed = Date.now();

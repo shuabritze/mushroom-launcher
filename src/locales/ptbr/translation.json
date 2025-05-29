@@ -29,6 +29,7 @@
     "downloader.download.process.not.found": "Processo de download não encontrado",
     "main.launch.client.launched": "Iniciado",
     "main.launch.client.not.found": "Cliente não encontrado",
+    "main.launch.client.error": "Erro ao iniciar o cliente",
     "main.set.client.path.title": "Selecionar Pasta de Instalação ou Pasta Existente",
     "mods.disable": "Desativar",
     "mods.enable": "Ativar",

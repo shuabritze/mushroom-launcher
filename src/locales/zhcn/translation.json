@@ -29,6 +29,7 @@
     "downloader.download.process.not.found": "未找到下载进程",
     "main.launch.client.launched": "已启动",
     "main.launch.client.not.found": "未找到客户端",
+    "main.launch.client.error": "启动客户端时出错",
     "main.set.client.path.title": "选择安装文件夹或现有文件夹",
     "mods.disable": "禁用",
     "mods.enable": "启用",
