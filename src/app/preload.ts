@@ -65,6 +65,7 @@ contextBridge.exposeInMainWorld("electron", {
             "window-focused",
             "window-blurred",
             "download-complete",
+            "download-error",
         ] as string[];
         if (validSendChannels.includes(channel)) {
             ipcRenderer.send(channel, data);
@@ -76,6 +77,7 @@ contextBridge.exposeInMainWorld("electron", {
             "window-focused",
             "window-blurred",
             "download-complete",
+            "download-error",
         ]; // Add your allowed receive channels
         if (validReceiveChannels.includes(channel)) {
             // Deliberately strip event object to only pass data

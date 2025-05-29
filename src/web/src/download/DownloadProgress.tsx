@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Progress } from "../../components/ui/progress";
 import { useAppState } from "../AppState";
 import { Container } from "../Container";
+import { toast } from "sonner";
 
 export const DownloadProgress = () => {
     const { downloadInProgress, setDownloadInProgress } = useAppState();
@@ -36,9 +37,19 @@ export const DownloadProgress = () => {
             setEta(-1);
         });
 
+        const downloadError = window.electron.on("download-error", (err) => {
+            setDownloadInProgress(false);
+            setProgress(0);
+            setFile("");
+            setEta(-1);
+
+            toast.error(err || "Failed to download client");
+        });
+
         return () => {
             clearInterval(interval);
             cleanDownload();
+            downloadError();
         };
     }, [downloadInProgress]);
 

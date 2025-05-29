@@ -45,6 +45,7 @@ ipcMain.handle("download-client", async (_, provider) => {
                     if (err) {
                         logger.error(err);
                         reject(err);
+                        MAIN_WINDOW.webContents.send("download-error", err);
                         return;
                     }
                     resolve();
@@ -405,6 +406,7 @@ const GithubClient = async (clientPath: string, cb: (err: Error) => void) => {
                     `Error downloading ${req.url}: ${res.status} ${res.statusText}`,
                 );
                 callback(new Error("Error downloading " + req.url), null);
+                MAIN_WINDOW.webContents.send("download-error", "Error downloading " + req.url);
                 return;
             }
 
@@ -414,6 +416,7 @@ const GithubClient = async (clientPath: string, cb: (err: Error) => void) => {
         } catch (err) {
             logger.error("Error downloading chunk", err);
             callback(err, null);
+            MAIN_WINDOW.webContents.send("download-error", err);
         }
     }
 
