@@ -1,11 +1,8 @@
 import {
     Download,
-    DownloadCloud,
-    DownloadCloudIcon,
     DownloadIcon,
     Folder,
     GithubIcon,
-    Link,
 } from "lucide-react";
 import {
     Sheet,
@@ -176,24 +173,6 @@ export const DownloadSheet = () => {
                                     {t(
                                         "download.install.github.info",
                                         "Downloads from Github releases. May be taken down.",
-                                    )}
-                                </small>
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => startDownload("direct")}
-                                >
-                                    {t(
-                                        "download.install.direct",
-                                        "Direct Link",
-                                    )}{" "}
-                                    <Link />
-                                </Button>
-                                <small>
-                                    {t(
-                                        "download.install.direct.info",
-                                        "Direct link to the client. May be taken down.",
                                     )}
                                 </small>
                             </div>
