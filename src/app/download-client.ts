@@ -81,11 +81,11 @@ ipcMain.handle("download-client", async (_, provider) => {
         });
     }
 
+    /*
     if (provider === "direct") {
-        const CLIENT_URL =
-            "aHR0cDovL3RhZGV1Y2NpLmRldi9tYXBsZXN0b3J5XzJfY2xpZW50Ljd6";
+        // Add a replacement direct-download URL before re-enabling this option.
+        const CLIENT_URL = "";
 
-        // Decode the URL
         const decodedUrl = Buffer.from(CLIENT_URL, "base64").toString("utf-8");
 
         logger.info("Direct download link:", decodedUrl);
@@ -98,6 +98,7 @@ ipcMain.handle("download-client", async (_, provider) => {
             resolve();
         });
     }
+    */
 
     return new Promise<void>((resolve, reject) => {
         logger.error("Download client not supported for provider", provider);

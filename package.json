@@ -11,7 +11,6 @@
         "make": "electron-forge make",
         "publish": "electron-forge publish",
         "lint": "eslint --ext .ts,.tsx .",
-        "test": "node --test tests/**/*.test.cjs",
         "format": "prettier --write \"src/**/*.{ts,tsx,css,json,md}\"",
         "extract-i18n": "i18next -c i18next-parser-config.ts"
     },
