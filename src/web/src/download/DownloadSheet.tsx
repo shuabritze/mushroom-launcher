@@ -1,11 +1,8 @@
 import {
     Download,
-    DownloadCloud,
-    DownloadCloudIcon,
     DownloadIcon,
     Folder,
     GithubIcon,
-    Link,
 } from "lucide-react";
 import {
     Sheet,
@@ -179,6 +176,7 @@ export const DownloadSheet = () => {
                                     )}
                                 </small>
                             </div>
+                            {/*
                             <div className="flex flex-col gap-2">
                                 <Button
                                     variant="outline"
@@ -197,6 +195,7 @@ export const DownloadSheet = () => {
                                     )}
                                 </small>
                             </div>
+                            */}
                         </SheetDescription>
                     </SheetHeader>
                 </SheetContent>
